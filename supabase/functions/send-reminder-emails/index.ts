@@ -58,6 +58,7 @@ serve(async (req) => {
       .select("*")
       .eq("is_active", true)
 
+    console.log('Fetched subscriptions:', subscriptions); // Add this line
     if (subscriptionError) throw subscriptionError
 
     // Get users for these subscriptions
@@ -89,7 +90,7 @@ serve(async (req) => {
         // Log if frequency is invalid, but don't error out the whole process
         console.warn(`Invalid frequency '${subscription.frequency}' for user ${subscription.user_id}`)
       }
-      
+
       if (shouldSend) {
         console.log(`Sending reminder to user ${user.id}`)
         // Get a random entry for this user
