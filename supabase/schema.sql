@@ -27,6 +27,8 @@ create table if not exists entries (
   location text,
   hashtags text[] default '{}',
   image_urls text[] default '{}',
+  ai_summary text default '',
+  positive_affirmation text default '',
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
