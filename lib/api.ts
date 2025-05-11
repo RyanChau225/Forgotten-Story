@@ -10,6 +10,8 @@ export type Entry = {
   location?: string
   hashtags: string[]
   image_urls: string[]
+  ai_summary?: string // Added AI summary field
+  positive_affirmation?: string // Added positive affirmation field
   created_at: string
   updated_at: string
 }

@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { Book, Calendar, Hash, Smile, BarChart3, Clock, TrendingUp } from "lucide-react"
+import { Book, Calendar, Hash, Smile, BarChart3, Clock, TrendingUp, Sparkles } from "lucide-react" // Added Sparkles icon
 import CenteredLayout from "@/components/CenteredLayout"
 import { Entry, getEntries } from "@/lib/api"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button" // Assuming Button component is used
 
 const timeFrames = ["Week", "Month", "Year"]
 
@@ -29,15 +30,16 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [generatingAi, setGeneratingAi] = useState<string | null>(null); // State to track which entry is generating AI
   const { toast } = useToast()
   const router = useRouter()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } = {} } = await supabase.auth.getSession() // Added default empty object
       setUser(session?.user ?? null)
-      
+
       if (!session?.user) {
         router.push('/sign-in')
       }
@@ -96,6 +98,50 @@ export default function Dashboard() {
     }
   }
 
+  // Handle AI generation
+  const handleGenerateAi = async (entryId: string) => {
+    if (generatingAi === entryId) return; // Prevent multiple clicks
+
+    setGeneratingAi(entryId);
+    try {
+      const response = await fetch('/api/entries/generate-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ entryId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate AI content');
+      }
+
+      const { summary, affirmation } = await response.json();
+
+      // Update the specific entry in the state
+      setEntries(entries.map(entry =>
+        entry.id === entryId ? { ...entry, ai_summary: summary, positive_affirmation: affirmation } : entry
+      ));
+
+      toast({
+        title: "Success",
+        description: "AI content generated successfully!",
+      });
+
+    } catch (error: any) { // Use any for now, can refine error type later
+      console.error('Error generating AI content:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate AI content. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingAi(null);
+    }
+  };
+
+
   // Calculate stats
   const stats = {
     totalEntries: entries.length,
@@ -108,7 +154,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen w-full bg-[url('/mountains.jpg')] bg-cover bg-center">
       <div className="min-h-screen w-full">
-    <CenteredLayout>
+        <CenteredLayout>
           <div className="w-full max-w-6xl space-y-6 pt-24 px-4">
             {/* Main Container Box */}
             <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/10 shadow-lg overflow-hidden">
@@ -194,11 +240,11 @@ export default function Dashboard() {
                     <div className="h-[300px] flex items-end justify-between gap-2">
                       {moodBars.map((bar, index) => (
                         <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                          <div 
+                          <div
                             className="w-full bg-white/10 rounded-lg transition-all duration-500 relative group hover:bg-white/20"
                             style={{ height: `${bar.value}%` }}
                           >
-                            <div 
+                            <div
                               className="w-full bg-white/20 rounded-t-lg transition-all duration-500 absolute top-0"
                               style={{ height: '2px' }}
                             />
@@ -264,13 +310,54 @@ export default function Dashboard() {
                               </p>
                             </div>
                             <span className="text-2xl">
-                              {entry.mood >= 80 ? '🥳' : 
-                               entry.mood >= 60 ? '😊' : 
-                               entry.mood >= 40 ? '😐' : 
+                              {entry.mood >= 80 ? '🥳' :
+                               entry.mood >= 60 ? '😊' :
+                               entry.mood >= 40 ? '😐' :
                                entry.mood >= 20 ? '😔' : '😢'}
                             </span>
                           </div>
                           <p className="text-sm text-gray-300 mt-2 line-clamp-2">{entry.content}</p>
+
+                          {/* Display AI Summary and Affirmation if they exist */}
+                          {(entry.ai_summary || entry.positive_affirmation) && (
+                            <div className="mt-4 p-3 bg-white/10 rounded-md">
+                              {entry.ai_summary && (
+                                <p className="text-sm text-gray-200">
+                                  <span className="font-semibold">Summary:</span> {entry.ai_summary}
+                                </p>
+                              )}
+                              {entry.positive_affirmation && (
+                                <p className="text-sm text-gray-200 mt-1">
+                                  <span className="font-semibold">Affirmation:</span> {entry.positive_affirmation}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* AI Generation Button */}
+                          {(!entry.ai_summary || !entry.positive_affirmation) && (
+                            <div className="mt-4 text-right">
+                              <Button
+                                onClick={() => handleGenerateAi(entry.id)}
+                                disabled={generatingAi !== null} // Disable if any entry is generating
+                                size="sm"
+                                className="bg-white/10 hover:bg-white/20 text-white"
+                              >
+                                {generatingAi === entry.id ? (
+                                  <div className="flex items-center">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Generating...
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center">
+                                    <Sparkles className="w-4 h-4 mr-2" />
+                                    Generate AI Insight
+                                  </div>
+                                )}
+                              </Button>
+                            </div>
+                          )}
+
                           {entry.hashtags.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-2">
                               {entry.hashtags.map((tag) => (
@@ -283,7 +370,7 @@ export default function Dashboard() {
                               ))}
                             </div>
                           )}
-        </div>
+                        </div>
                       ))}
                       {hasMore && (
                         <button
@@ -292,20 +379,19 @@ export default function Dashboard() {
                         >
                           Load More
                         </button>
-          )}
-        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="text-center py-8 text-gray-400">
                       No entries yet. Start your journaling journey today!
                     </div>
                   )}
-        </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    </CenteredLayout>
+        </CenteredLayout>
       </div>
     </div>
   )
 }
-
