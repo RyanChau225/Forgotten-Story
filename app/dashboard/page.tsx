@@ -154,7 +154,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen w-full bg-[url('/mountains.jpg')] bg-cover bg-center">
       <div className="min-h-screen w-full">
-        <CenteredLayout>
+    <CenteredLayout>
           <div className="w-full max-w-6xl space-y-6 pt-24 px-4">
             {/* Main Container Box */}
             <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/10 shadow-lg overflow-hidden">
@@ -370,7 +370,7 @@ export default function Dashboard() {
                               ))}
                             </div>
                           )}
-                        </div>
+        </div>
                       ))}
                       {hasMore && (
                         <button
@@ -379,18 +379,18 @@ export default function Dashboard() {
                         >
                           Load More
                         </button>
-                      )}
-                    </div>
+          )}
+        </div>
                   ) : (
                     <div className="text-center py-8 text-gray-400">
                       No entries yet. Start your journaling journey today!
                     </div>
                   )}
-                </div>
-              </div>
-            </div>
+        </div>
           </div>
-        </CenteredLayout>
+        </div>
+      </div>
+    </CenteredLayout>
       </div>
     </div>
   )

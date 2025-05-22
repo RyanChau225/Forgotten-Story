@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { format } from "date-fns"
-import { Search, Filter, SortAsc, SortDesc, ArrowUpDown, Trash2, FileText, X, Calendar as CalendarIcon } from "lucide-react"
+import { Search, Filter, SortAsc, SortDesc, ArrowUpDown, Trash2, FileText, X, Calendar as CalendarIcon, Sparkles, Loader2 } from "lucide-react"
 import { Entry, searchEntries, deleteEntry } from "@/lib/api"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
 import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 
 type SortField = "date" | "mood" | "title"
 type SortDirection = "asc" | "desc"
@@ -50,12 +51,12 @@ export default function SearchPage() {
   const [hashtagInput, setHashtagInput] = useState("")
   const [entryToDelete, setEntryToDelete] = useState<Entry | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [selectedEntryForSummary, setSelectedEntryForSummary] = useState<Entry | null>(null)
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
   const [summaryGlow, setSummaryGlow] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
   const [isSearching, setIsSearching] = useState(false)
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
 
   const convertMoodToScale = (mood: number) => {
     return Math.ceil(mood / 20) + 1
@@ -228,14 +229,73 @@ export default function SearchPage() {
 
   const handleEntryClick = (entry: Entry) => {
     setSelectedEntry(entry)
-    setTimeout(scrollToEntry, 100) // Small delay to ensure DOM is updated
+    setSummaryGlow(true)
+    setTimeout(() => setSummaryGlow(false), 1500)
+    setTimeout(scrollToEntry, 100)
   }
 
   const handleSummaryClick = (entry: Entry) => {
-    setSelectedEntryForSummary(entry)
+    setSelectedEntry(entry)
     setSummaryGlow(true)
-    setTimeout(() => setSummaryGlow(false), 2000)
+    setTimeout(() => setSummaryGlow(false), 1500)
   }
+
+  const handleGenerateAISummary = async () => {
+    if (!selectedEntry) return;
+
+    setIsGeneratingSummary(true);
+    try {
+      const response = await fetch('/api/entries/generate-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entryId: selectedEntry.id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate AI summary');
+      }
+
+      const { summary, affirmations } = await response.json();
+
+      setEntries(prevEntries =>
+        prevEntries.map(e =>
+          e.id === selectedEntry.id
+            ? { ...e, ai_summary: summary, positive_affirmation: affirmations }
+            : e
+        )
+      );
+
+      setSelectedEntry(prev => prev ? { ...prev, ai_summary: summary, positive_affirmation: affirmations } : null);
+      
+      toast({
+        title: "AI Insight Generated",
+        description: "Summary and affirmations are ready.",
+      });
+
+    } catch (error: any) {
+      console.error('Error generating AI summary:', error);
+      setSelectedEntry(prev => prev ? { 
+        ...prev, 
+        ai_summary: "Could not generate summary.", 
+        positive_affirmation: "Could not generate affirmations." 
+      } : null);
+      setEntries(prevEntries =>
+        prevEntries.map(e =>
+          e.id === selectedEntry.id
+            ? { ...e, ai_summary: "Could not generate summary.", positive_affirmation: "Could not generate affirmations." }
+            : e
+        )
+      );
+      toast({
+        title: "Error Generating AI Insight",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 pt-24 pb-8">
@@ -381,12 +441,12 @@ export default function SearchPage() {
               </div>
 
               {/* Summary Box */}
-              {selectedEntryForSummary && (
+              {selectedEntry && (
                 <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/10 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-medium">Entry Summary</h3>
                     <button
-                      onClick={() => setSelectedEntryForSummary(null)}
+                      onClick={() => setSelectedEntry(null)}
                       className="text-gray-400 hover:text-white"
                     >
                       <X className="w-4 h-4" />
@@ -738,27 +798,124 @@ export default function SearchPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium">AI Entry Summary</h3>
                   <button
-                    onClick={() => setSelectedEntryForSummary(null)}
+                    onClick={() => setSelectedEntry(null)}
                     className="text-gray-400 hover:text-white"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                {selectedEntryForSummary ? (
+                {selectedEntry ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">
-                        Entry: {selectedEntryForSummary.title}
+                      <span className="text-sm text-gray-400 truncate pr-2">
+                        Entry: {selectedEntry.title}
                       </span>
-                      <span className="text-sm text-gray-400">
-                        {format(new Date(selectedEntryForSummary.date), 'MMM d, yyyy')}
+                      <span className="text-sm text-gray-400 flex-shrink-0">
+                        {format(new Date(selectedEntry.date), 'MMM d, yyyy')}
                       </span>
                     </div>
-                    <div className="mt-4">
-                      <p className="text-sm text-gray-300 whitespace-pre-wrap">
-                        {selectedEntryForSummary.content}
-                      </p>
-                    </div>
+                    {/* AI Content Display Logic */}
+                    {isGeneratingSummary && selectedEntry.id === (selectedEntry ? selectedEntry.id : null) ? (
+                      <div className="text-center py-4">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-300" />
+                        <p className="text-sm text-gray-400 mt-2">Generating insight...</p>
+                      </div>
+                    ) : selectedEntry.ai_summary && selectedEntry.ai_summary !== "Could not generate summary." ? (
+                      <>
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Summary</h4>
+                          <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                            {selectedEntry.ai_summary}
+                          </p>
+                        </div>
+                        <div className="mt-3">
+                          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Positive Affirmations</h4>
+                          {(() => {
+                            let affirmationsToDisplay: { text: string; based_on?: string }[] = [];
+                            if (selectedEntry && selectedEntry.positive_affirmation) {
+                              if (typeof selectedEntry.positive_affirmation === 'string') {
+                                try {
+                                  const parsed = JSON.parse(selectedEntry.positive_affirmation);
+                                  if (Array.isArray(parsed)) {
+                                    affirmationsToDisplay = parsed.filter(item => typeof item === 'object' && item !== null && 'text' in item);
+                                  } else if (selectedEntry.positive_affirmation !== "Could not generate affirmations.") {
+                                    // This case might be redundant if the API always sends an array or stringified array
+                                  }
+                                } catch (e) {
+                                  // If JSON.parse fails, and it's not the error string, treat as single old affirmation
+                                  if (selectedEntry.positive_affirmation !== "Could not generate affirmations.") {
+                                    // This branch might not be hit if API always sends array/stringified array
+                                  }
+                                }
+                              } else if (Array.isArray(selectedEntry.positive_affirmation)) {
+                                affirmationsToDisplay = selectedEntry.positive_affirmation.filter(item => typeof item === 'object' && item !== null && 'text' in item);
+                              }
+                            }
+
+                            // New logic: Check if affirmationsToDisplay is empty AFTER attempting to parse/assign
+                            if (affirmationsToDisplay.length === 0) {
+                                // Check if a summary exists and is not the error message
+                                if (selectedEntry.ai_summary && selectedEntry.ai_summary !== "Could not generate summary.") {
+                                    return <p className="text-sm text-gray-300 whitespace-pre-wrap">The AI analyzed this entry but couldn't find enough information to generate affirmations. Try adding more detail to your entry for better insights.</p>;
+                                }
+                                // Fallback if summary also failed or is missing
+                                return <p className="text-sm text-gray-300 whitespace-pre-wrap">Could not generate affirmations.</p>;
+                            }
+
+                            return affirmationsToDisplay.map((aff, index) => (
+                              <div key={index} className="mb-3 last:mb-0 p-2 bg-black/10 rounded-md">
+                                <p className="text-sm text-gray-200 whitespace-pre-wrap font-medium">
+                                  {aff.text}
+                                </p>
+                                {aff.based_on && aff.based_on !== "N/A" && (
+                                  <p className="text-xs text-gray-400 italic mt-1">
+                                    Based on: "{aff.based_on}"
+                                  </p>
+                                )}
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                        <Button
+                          onClick={handleGenerateAISummary}
+                          disabled={isGeneratingSummary}
+                          size="sm"
+                          variant="outline"
+                          className="w-full mt-4 bg-white/5 hover:bg-white/10 text-gray-300 border-white/20"
+                        >
+                          {isGeneratingSummary ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          ) : (
+                            <Sparkles className="w-4 h-4 mr-2" />
+                          )}
+                          Regenerate Insight
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-gray-400 py-2">
+                          {selectedEntry.ai_summary === "Could not generate summary." 
+                            ? "Previously failed to generate insight. Try again?"
+                            // New Message for initial state or when summary is present but no affirmations could be generated
+                            : selectedEntry.ai_summary && (!selectedEntry.positive_affirmation || (Array.isArray(selectedEntry.positive_affirmation) && selectedEntry.positive_affirmation.length === 0))
+                            ? "AI summary generated. Click to generate affirmations or add more detail to your entry for better results."
+                            : "No AI insight generated yet for this entry."}
+                        </p>
+                        <Button
+                          onClick={handleGenerateAISummary}
+                          disabled={isGeneratingSummary}
+                          size="sm"
+                          className="w-full mt-3 bg-yellow-500/80 hover:bg-yellow-500 text-black"
+                        >
+                          {isGeneratingSummary ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          ) : (
+                            <Sparkles className="w-4 h-4 mr-2" />
+                          )}
+                          Generate AI Insight
+                        </Button>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8 px-4 space-y-4">

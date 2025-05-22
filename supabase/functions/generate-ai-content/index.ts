@@ -1,105 +1,184 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai"; // Import GenerativeModel type
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+// Remove the shared import: import { corsHeaders } from "../_shared/cors.ts"; 
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "https://esm.sh/@google/generative-ai";
 
-// Define an interface for AI generation services
-interface AIAssistantService {
-  generate(content: string): Promise<{ summary: string; affirmation: string }>;
+// Directly include CORS headers here
+export const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+// IMPORTANT: You'll need to set up your AI provider's client and API key
+// For example, if using OpenAI:
+// import OpenAI from "https://esm.sh/openai@4.20.0"; // Or your preferred version
+// const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY")! });
+
+// Example: If using Google Gemini (as you had before), you might have:
+// import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+// const genAI = new GoogleGenerativeAI(Deno.env.get("GEMINI_API_KEY")!);
+// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+interface RequestPayload {
+  entryContent: string;
 }
 
-// Implementation for Gemini Flash 2.5
-class GeminiFlash2_5Service implements AIAssistantService {
-  private genAI: GoogleGenerativeAI;
-  private model: GenerativeModel; // Use GenerativeModel type
+// Get the API key from environment variables
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+if (!GEMINI_API_KEY) {
+  console.error("GEMINI_API_KEY environment variable not set.");
+  // Optional: throw an error or handle it to prevent the function from running without an API key
+}
 
-  constructor(apiKey: string) {
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Using the correct model ID for Flash 2.5
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const model = genAI ? genAI.getGenerativeModel({ 
+  model: "gemini-2.5-flash-preview-04-17" // Corrected model ID
+}) : null;
+
+serve(async (req: Request) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
-  async generate(content: string): Promise<{ summary: string; affirmation: string }> {
-    console.log(`Generating AI content for entry: ${content.substring(0, 100)}...`);
-
-    try {
-      // Updated prompt to request JSON output
-      const prompt = `Please provide a catchy one-liner summary that entices and hooks the reader, and a concise positive affirmation, based on the following journal entry. Format your response as a JSON object with the keys "summary" and "affirmation".
-
-Journal Entry:
-${content}`;
-
-      const result = await this.model.generateContent(prompt);
-      const response = result.response;
-      const text = response.text();
-
-      console.log("Raw AI response text:", text);
-
-      // Parsing logic for JSON output
-      let summary = "Could not extract summary.";
-      let affirmation = "Could not extract affirmation.";
-
-      try {
-        const parsedResponse = JSON.parse(text);
-        if (parsedResponse.summary && typeof parsedResponse.summary === 'string') {
-          summary = parsedResponse.summary;
-        }
-        if (parsedResponse.affirmation && typeof parsedResponse.affirmation === 'string') {
-          affirmation = parsedResponse.affirmation;
-        }
-      } catch (parseError) {
-        console.error("Failed to parse AI response as JSON:", parseError);
-        // If JSON parsing fails, you might want to log the raw text
-        // or attempt a fallback parsing method if necessary.
+  if (!model || !GEMINI_API_KEY) {
+    console.error("Gemini AI model or API key is not initialized.");
+    return new Response(
+      JSON.stringify({ error: "AI service is not configured." }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
       }
-
-      return {
-        summary: summary,
-        affirmation: affirmation,
-      };
-    } catch (error: unknown) { // Explicitly type error as unknown
-      console.error("Error calling Gemini API:", error);
-      // It's safer to check if error is an instance of Error before accessing message
-      throw new Error(`Failed to generate content from AI: ${(error as Error).message || error}`);
-    }
-  }
-}
-
-// Function to get the configured AI service
-function getAIAssistantService(): AIAssistantService {
-  // TODO: Get API key from environment variables securely
-  const apiKey = Deno.env.get("GEMINI_API_KEY"); // Example environment variable name
-
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY environment variable not set.");
+    );
   }
 
-  // TODO: Add logic here to select different AI services based on configuration
-  // For now, we default to Gemini Flash 2.5
-  return new GeminiFlash2_5Service(apiKey);
-}
-
-Deno.serve(async (req: Request) => { // Added type annotation for req
   try {
-    const { entryContent } = await req.json();
+    const { entryContent }: RequestPayload = await req.json();
 
     if (!entryContent) {
       return new Response(
-        JSON.stringify({ error: "Missing 'entryContent' in request body" }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
+        JSON.stringify({ error: "entryContent is required" }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
       );
     }
 
-    const aiService = getAIAssistantService();
-    const result = await aiService.generate(entryContent);
+    console.log("Received content for AI processing (first 100 chars):", entryContent.substring(0, 100) + "...");
+
+    // Manually Corrected Prompt for new summary and affirmation format
+    const promptWithContext = `Given the following journal entry, please perform two tasks:
+
+1.  **Generate a "title_summary"**: This should be a single, creative, story-like title that captures the essence or vibe of the day described in the journal entry. It should be a maximum of 15 words. Examples of good title_summaries include:
+    *   "A Day of Driven Work, Interwoven with Moments of Peace"
+    *   "Between Project Push and Personal Recharge: A Day's Account"
+    *   "Navigating Ambition with Self-Kindness: A Journal Entry"
+    *   "From Deep Work to Down Time: A Day's Rhythm"
+    *   "The Balance of Building and Being: A Daily Log"
+    *   "Where Project Goals Met Personal Practice: A Day in Review"
+    *   "The Energy and Ease of a Productive Day"
+    *   "Finding Enjoyment in the Effort: A Day's Reflection"
+    *   "A Chapter of Focus, Flow, and Feeling Good"
+
+2.  **Generate an "affirmations_list"**: This should be an array of JSON objects. Each object in the array represents a positive affirmation inspired by the journal entry and MUST have two keys:
+    *   "text": The positive affirmation itself (max 20 words).
+    *   "based_on": A short quote or a summary of the part(s) of the journal entry that inspired this affirmation.
+    Examples of how each object in the affirmations_list should be structured:
+    {
+      "text": "I am a powerful worker, capable of achieving big things.",
+      "based_on": "Did massive work today on the project"
+    },
+    {
+      "text": "I am taking good care of myself and honoring my body's needs.",
+      "based_on": "Been bathing 2x's a day. Man chill. and took a nap at 3pm when I wasn't feeling it."
+    },
+    {
+      "text": "I am excited and motivated to work on my project.",
+      "based_on": "Yes wish I did more Project work. I don't mind it actually want to. Bothing is fun work OUI."
+    }
+
+Return ONLY a single JSON object as your entire response. This JSON object must have exactly two top-level keys: "title_summary" (a string) and "affirmations_list" (an array of objects as described above). Do not include any other text, explanations, or markdown formatting outside of this single JSON object.
+
+Journal Entry:
+---
+${entryContent}
+---
+
+JSON Output:`;
+
+    console.log("Sending to Gemini - Full Prompt (first 500 chars):", promptWithContext.substring(0, 500));
+
+    const result = await model.generateContent(promptWithContext);
+    const response = result.response;
+
+    console.log("Full Gemini API response object:", JSON.stringify(response, null, 2));
+    if (!response) {
+      console.error("No response object from Gemini API after generateContent call.");
+      throw new Error("No response object received from AI generation service.");
+    }
+
+    let text = "";
+    try {
+      text = response.text();
+    } catch (e: any) {
+      console.error("Error calling response.text():", e);
+      console.error("Full Gemini response object (on .text() error):", JSON.stringify(response, null, 2));
+      throw new Error("Failed to extract text from AI response.");
+    }
+    console.log("Raw text received from Gemini API:", text);
+    if (!text || text.trim() === "") {
+      console.error("Empty text response received from Gemini API. Full response object was:", JSON.stringify(response, null, 2));
+      throw new Error("Received empty text response from AI generation service. Check Gemini API key, model access, or potential content filtering by the API.");
+    }
+
+    let cleanedText = text.trim();
+    if (cleanedText.startsWith("```json")) {
+      cleanedText = cleanedText.substring(7);
+      if (cleanedText.endsWith("```")) {
+        cleanedText = cleanedText.substring(0, cleanedText.length - 3);
+      }
+    } else if (cleanedText.startsWith("```")) {
+        cleanedText = cleanedText.substring(3);
+        if (cleanedText.endsWith("```")) {
+            cleanedText = cleanedText.substring(0, cleanedText.length - 3);
+        }
+    }
+    cleanedText = cleanedText.trim();
+    console.log("Cleaned text before JSON.parse:", cleanedText);
+
+    let generatedContent;
+    try {
+      generatedContent = JSON.parse(cleanedText);
+    } catch (e: any) {
+      console.error("Failed to parse cleaned text as JSON. Cleaned text was:", cleanedText, "Original text was:", text, "Error:", e);
+      throw new Error(`Failed to parse AI response as JSON: ${e.message}`);
+    }
+
+    const title_summary = generatedContent.title_summary || "Could not generate summary.";
+    const affirmations_list = Array.isArray(generatedContent.affirmations_list)
+      ? generatedContent.affirmations_list
+      : [{ text: "Could not generate affirmations.", based_on: "N/A" }];
+
+    console.log("Final AI Insight:", { title_summary, affirmations_list });
 
     return new Response(
-      JSON.stringify(result),
-      { headers: { "Content-Type": "application/json" } },
+      JSON.stringify({ 
+        summary: title_summary, 
+        affirmations: affirmations_list 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error: unknown) { // Explicitly type error as unknown
-    console.error("Error handling request:", error); // More general error message
-    // It's safer to check if error is an instance of Error before accessing message
+
+  } catch (error: unknown) {
+    console.error("Error in generate-ai-content function:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to process request";
     return new Response(
-      JSON.stringify({ error: (error as Error).message || "Internal Server Error" }), // Return error message from thrown error
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      JSON.stringify({ error: errorMessage }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
     );
   }
 });

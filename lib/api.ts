@@ -1,4 +1,9 @@
 // Types
+export type AffirmationObject = {
+  text: string;
+  based_on: string;
+};
+
 export type Entry = {
   id: string
   title: string
@@ -11,7 +16,8 @@ export type Entry = {
   hashtags: string[]
   image_urls: string[]
   ai_summary?: string // Added AI summary field
-  positive_affirmation?: string // Added positive affirmation field
+  // Can be an array of objects, a string (for old format/error), or undefined
+  positive_affirmation?: AffirmationObject[] | string // Added positive affirmation field
   created_at: string
   updated_at: string
 }
