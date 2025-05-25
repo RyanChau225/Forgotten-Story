@@ -37,7 +37,11 @@ export async function GET(request: Request) {
       dbQuery = dbQuery.gte('date', startDate)
     }
     if (endDate) {
-      dbQuery = dbQuery.lte('date', endDate)
+      // Adjust endDate to be exclusive of the next day for correct range
+      const endDateObj = new Date(endDate)
+      endDateObj.setDate(endDateObj.getDate() + 1)
+      const exclusiveEndDate = endDateObj.toISOString().split('T')[0] // Format as YYYY-MM-DD
+      dbQuery = dbQuery.lt('date', exclusiveEndDate)
     }
 
     // Apply mood filters if they exist

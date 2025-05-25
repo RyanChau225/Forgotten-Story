@@ -2,27 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { format } from "date-fns"
-import { Search, Filter, SortAsc, SortDesc, ArrowUpDown, Trash2, FileText, X, Calendar as CalendarIcon, Sparkles, Loader2, Edit3 } from "lucide-react"
-import { Entry, searchEntries, deleteEntry } from "@/lib/api"
+import { Search, Filter, SortAsc, SortDesc, ArrowUpDown, Trash2, FileText, X, Calendar as CalendarIcon, Sparkles, Loader2, Edit3, CalendarDays, SmilePlus, Hash, Image as ImageIcon } from "lucide-react"
+import { Entry, searchEntries, deleteEntry, getEntryById } from "@/lib/api"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
 import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/hooks/use-toast"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-
-const moodLabels = [
-  { value: 1, label: "😭", description: "Overwhelmed" },
-  { value: 2, label: "😢", description: "Very Sad" },
-  { value: 3, label: "😔", description: "Sad" },
-  { value: 4, label: "🙁", description: "Slightly Down" },
-  { value: 5, label: "😐", description: "Neutral" },
-  { value: 6, label: "🙂", description: "Okay" },
-  { value: 7, label: "😊", description: "Happy" },
-  { value: 8, label: "😄", description: "Very Happy" },
-  { value: 9, label: "🥳", description: "Ecstatic" },
-  { value: 10, label: "🤩", description: "Blissful" }
-];
+import { moodLabels } from "@/lib/moods"
 
 type SortField = "date" | "mood" | "title"
 type SortDirection = "asc" | "desc"
@@ -74,6 +62,8 @@ export default function SearchPage() {
   const router = useRouter()
   const [isSearching, setIsSearching] = useState(false)
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
+  const searchParams = useSearchParams();
+  const [initialUrlSearchTriggered, setInitialUrlSearchTriggered] = useState(false);
 
   // Add debounced search effect
   useEffect(() => {
@@ -83,6 +73,73 @@ export default function SearchPage() {
 
     return () => clearTimeout(timer)
   }, [query])
+
+  // Initial load effect for URL parameters
+  useEffect(() => {
+    const entryIdFromUrl = searchParams.get("entryId");
+    const dateFromUrl = searchParams.get("date");
+
+    const loadInitialData = async () => {
+      if (entryIdFromUrl && !initialUrlSearchTriggered) {
+        console.log("(Mount) EntryID from URL found:", entryIdFromUrl, "Fetching specific entry.");
+        setIsSearching(true);
+        try {
+          const fetchedEntry = await getEntryById(entryIdFromUrl);
+          if (fetchedEntry) {
+            setSelectedEntry(fetchedEntry);
+            setEntries([fetchedEntry]); // Display only this entry in the main list
+            // Optionally, set filters to match this entry's date if desired for consistency
+            setFilters(prevFilters => ({
+              ...prevFilters,
+              startDate: fetchedEntry.date.split('T')[0], // Assuming date is ISO string
+              endDate: fetchedEntry.date.split('T')[0],
+            }));
+            // Scroll to the entry preview section
+            setTimeout(() => {
+              const previewSection = document.getElementById('entry-preview-section');
+              if (previewSection) {
+                previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 100); // Timeout to allow DOM to update
+          } else {
+            toast({
+              title: "Entry not found",
+              description: `Could not find an entry with ID: ${entryIdFromUrl}`,
+              variant: "destructive",
+            });
+            setEntries([]); // Clear entries if specific entry not found
+          }
+        } catch (error) {
+          console.error("Error fetching entry by ID:", error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch the specified entry.",
+            variant: "destructive",
+          });
+          setEntries([]);
+        } finally {
+          setIsSearching(false);
+          setInitialUrlSearchTriggered(true);
+        }
+      } else if (dateFromUrl && !initialUrlSearchTriggered) {
+        console.log("(Mount) Date from URL found (no EntryID):", dateFromUrl, "Setting filters.");
+        setFilters(prevFilters => ({
+          ...prevFilters,
+          startDate: dateFromUrl,
+          endDate: dateFromUrl,
+        }));
+        // The main search effect will pick this up
+        // setInitialUrlSearchTriggered(true); // This will be set by the main search effect for dateFromUrl scenario
+      } else if (!initialUrlSearchTriggered) {
+        // This will be hit if no entryId and no dateFromUrl on initial load.
+        // The main search effect will handle the initial general search.
+        console.log("(Mount) No EntryID or Date from URL. Initial search will be triggered by main effect.");
+      }
+    };
+
+    loadInitialData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Runs once on mount
 
   // Memoize the search function
   const performSearch = useCallback(async () => {
@@ -105,9 +162,12 @@ export default function SearchPage() {
         if (sortField === "mood") {
           return sortDirection === "asc" ? a.mood - b.mood : b.mood - a.mood
         }
+        // Fallback for title sort, or if you add other sortable text fields
+        const titleA = a.title || "";
+        const titleB = b.title || "";
         return sortDirection === "asc" 
-          ? a.title.localeCompare(b.title)
-          : b.title.localeCompare(a.title)
+          ? titleA.localeCompare(titleB)
+          : titleB.localeCompare(titleA)
       })
       setEntries(sorted)
     } catch (error) {
@@ -122,15 +182,30 @@ export default function SearchPage() {
     }
   }, [debouncedQuery, filters, sortField, sortDirection, toast])
 
-  // Initial load effect
+  // Main search effect - reacts to debouncedQuery and filter changes
   useEffect(() => {
-    performSearch()
-  }, [])
+    const dateFromUrl = searchParams.get("date");
 
-  // Update search effect to use debounced query
-  useEffect(() => {
-    performSearch()
-  }, [performSearch])
+    // Scenario 1: Date from URL is present, filters are set, and initial URL search hasn't been triggered yet.
+    if (dateFromUrl && filters.startDate === dateFromUrl && filters.endDate === dateFromUrl && !initialUrlSearchTriggered) {
+      console.log("PerformSearch Effect: Triggering search for initial URL date.", "Query:", debouncedQuery, "Filters:", filters);
+      performSearch();
+      setInitialUrlSearchTriggered(true); // Mark that the initial URL-based search has been done
+    }
+    // Scenario 2: No date from URL, and it's not the very first render with default filters (avoid initial empty search if URL date was expected)
+    else if (!dateFromUrl && !initialUrlSearchTriggered) { 
+      // This handles the case where the page loads without a date in the URL.
+      // It also ensures that if a date WAS in the URL, we don't run this until initialUrlSearchTriggered is true.
+      console.log("PerformSearch Effect: Triggering initial search (no URL date or after URL date processed).", "Query:", debouncedQuery, "Filters:", filters);
+      performSearch();
+      setInitialUrlSearchTriggered(true); // Mark that an initial search has occurred
+    }
+    // Scenario 3: Subsequent searches after initial load (e.g., user changes query or filters)
+    else if (initialUrlSearchTriggered) {
+      console.log("PerformSearch Effect: Triggering subsequent search.", "Query:", debouncedQuery, "Filters:", filters);
+      performSearch();
+    }
+  }, [debouncedQuery, filters, performSearch, searchParams, initialUrlSearchTriggered]); // Added searchParams and initialUrlSearchTriggered
 
   const handleSort = (field: SortField) => {
     const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
@@ -259,7 +334,7 @@ export default function SearchPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate AI summary');
+        throw new Error(errorData.error || 'Failed to generate A.I. summary');
       }
 
       const { summary, affirmations } = await response.json();
@@ -275,12 +350,12 @@ export default function SearchPage() {
       setSelectedEntry(prev => prev ? { ...prev, ai_summary: summary, positive_affirmation: affirmations } : null);
       
       toast({
-        title: "AI Insight Generated",
+        title: "A.I. Insight Generated",
         description: "Summary and affirmations are ready.",
       });
 
     } catch (error: any) {
-      console.error('Error generating AI summary:', error);
+      console.error('Error generating A.I. summary:', error);
       setSelectedEntry(prev => prev ? { 
         ...prev, 
         ai_summary: "Could not generate summary.", 
@@ -294,7 +369,7 @@ export default function SearchPage() {
         )
       );
       toast({
-        title: "Error Generating AI Insight",
+        title: "Error Generating A.I. Insight",
         description: error.message || "Please try again.",
         variant: "destructive",
       });
@@ -349,7 +424,9 @@ export default function SearchPage() {
                 <div className="space-y-6">
                   {/* Date Range */}
                   <div className="pb-6 border-b border-white/5">
-                    <h4 className="text-base font-medium text-white mb-4">Date Range</h4>
+                    <h4 className="text-base font-medium text-white mb-4 flex items-center">
+                      <CalendarDays className="w-4 h-4 mr-2 text-gray-400" /> Date Range
+                    </h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs text-gray-500 mb-1">
@@ -384,7 +461,9 @@ export default function SearchPage() {
 
                   {/* Mood Range */}
                   <div className="pb-6 border-b border-white/5">
-                    <h4 className="text-base font-medium text-white mb-4">Mood Range</h4>
+                    <h4 className="text-base font-medium text-white mb-4 flex items-center">
+                      <SmilePlus className="w-4 h-4 mr-2 text-gray-400" /> Mood Range
+                    </h4>
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -434,9 +513,11 @@ export default function SearchPage() {
 
                   {/* Hashtags */}
                   <div className="pt-2">
-                    <h4 className="text-base font-medium text-white mb-4">Hashtags</h4>
-          <input
-            type="text"
+                    <h4 className="text-base font-medium text-white mb-4 flex items-center">
+                      <Hash className="w-4 h-4 mr-2 text-gray-400" /> Hashtags
+                    </h4>
+                    <input
+                      type="text"
                       value={hashtagInput}
                       onChange={(e) => setHashtagInput(e.target.value)}
                       onKeyDown={handleHashtagAdd}
@@ -632,7 +713,7 @@ export default function SearchPage() {
             </div>
 
             {/* Entry Preview */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
+            <div id="entry-preview-section" className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
               {selectedEntry ? (
                 <div>
                   <div className="flex items-start justify-between mb-6">
@@ -657,12 +738,17 @@ export default function SearchPage() {
                   </div>
 
                   <div className="prose prose-invert max-w-none mb-6">
+                    <h4 className="text-sm font-medium text-gray-400 mb-2 flex items-center">
+                      <FileText className="w-4 h-4 mr-2 text-gray-400" /> Content Log
+                    </h4>
                     <p className="text-gray-300 whitespace-pre-wrap">{selectedEntry.content}</p>
                   </div>
 
                   {selectedEntry.hashtags && selectedEntry.hashtags.length > 0 && (
                     <div className="mt-6">
-                      <h4 className="text-sm font-medium text-gray-400 mb-2">Tags</h4>
+                      <h4 className="text-sm font-medium text-gray-400 mb-2 flex items-center">
+                        <Hash className="w-4 h-4 mr-2 text-gray-400" /> Tags
+                      </h4>
                       <div className="flex flex-wrap gap-2">
                         {selectedEntry.hashtags.map((tag, index) => (
                           <span
@@ -678,7 +764,9 @@ export default function SearchPage() {
 
                   {selectedEntry.image_urls && selectedEntry.image_urls.length > 0 && (
                     <div className="mt-6">
-                      <h4 className="text-sm font-medium text-gray-400 mb-2">Images</h4>
+                      <h4 className="text-sm font-medium text-gray-400 mb-2 flex items-center">
+                        <ImageIcon className="w-4 h-4 mr-2 text-gray-400" /> Images
+                      </h4>
                       <div className="grid grid-cols-3 gap-4">
                         {selectedEntry.image_urls.map((imageUrl: string, index: number) => (
                           <a
@@ -727,7 +815,9 @@ export default function SearchPage() {
                 {/* Date Range */}
                 <div className="pb-6 border-b border-white/5">
                   <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-base font-medium text-white">Date Range</h4>
+                    <h4 className="text-base font-medium text-white flex items-center">
+                      <CalendarDays className="w-4 h-4 mr-2 text-gray-400" /> Date Range
+                    </h4>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -764,7 +854,9 @@ export default function SearchPage() {
                 {/* Mood Range */}
                 <div className="pb-6 border-b border-white/5">
                   <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-base font-medium text-white">Mood Range</h4>
+                    <h4 className="text-base font-medium text-white flex items-center">
+                      <SmilePlus className="w-4 h-4 mr-2 text-gray-400" /> Mood Range
+                    </h4>
                   </div>
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -816,7 +908,9 @@ export default function SearchPage() {
                 {/* Hashtags */}
                 <div className="pt-2">
                   <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-base font-medium text-white">Hashtags</h4>
+                    <h4 className="text-base font-medium text-white flex items-center">
+                      <Hash className="w-4 h-4 mr-2 text-gray-400" /> Hashtags
+                    </h4>
                   </div>
                   <input
                     type="text"
@@ -855,7 +949,7 @@ export default function SearchPage() {
                 summaryGlow ? 'border-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.3)]' : 'border-white/10'
               } p-6`}>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium">AI Entry Summary</h3>
+                  <h3 className="text-sm font-medium">A.I. Entry Summary</h3>
                   <button
                     onClick={() => setSelectedEntry(null)}
                     className="text-gray-400 hover:text-white"
@@ -915,7 +1009,7 @@ export default function SearchPage() {
                             if (affirmationsToDisplay.length === 0) {
                                 // Check if a summary exists and is not the error message
                                 if (selectedEntry.ai_summary && selectedEntry.ai_summary !== "Could not generate summary.") {
-                                    return <p className="text-sm text-gray-300 whitespace-pre-wrap">The AI analyzed this entry but couldn't find enough information to generate affirmations. Try adding more detail to your entry for better insights.</p>;
+                                    return <p className="text-sm text-gray-300 whitespace-pre-wrap">The A.I. analyzed this entry but couldn't find enough information to generate affirmations. Try adding more detail to your entry for better insights.</p>;
                                 }
                                 // Fallback if summary also failed or is missing
                                 return <p className="text-sm text-gray-300 whitespace-pre-wrap">Could not generate affirmations.</p>;
@@ -954,11 +1048,11 @@ export default function SearchPage() {
                       <>
                         <p className="text-sm text-gray-400 py-2">
                           {selectedEntry.ai_summary === "Could not generate summary." 
-                            ? "Previously failed to generate insight. Try again?"
+                            ? "Previously failed to generate A.I. insight. Try again?"
                             // New Message for initial state or when summary is present but no affirmations could be generated
                             : selectedEntry.ai_summary && (!selectedEntry.positive_affirmation || (Array.isArray(selectedEntry.positive_affirmation) && selectedEntry.positive_affirmation.length === 0))
-                            ? "AI summary generated. Click to generate affirmations or add more detail to your entry for better results."
-                            : "No AI insight generated yet for this entry."}
+                            ? "A.I. summary generated. Click to generate affirmations or add more detail to your entry for better results."
+                            : "No A.I. insight generated yet for this entry."}
                         </p>
                         <Button
                           onClick={handleGenerateAISummary}
@@ -971,7 +1065,7 @@ export default function SearchPage() {
                           ) : (
                             <Sparkles className="w-4 h-4 mr-2" />
                           )}
-                          Generate AI Insight
+                          Generate A.I. Insight
                         </Button>
                       </>
                     )}
@@ -980,9 +1074,9 @@ export default function SearchPage() {
                   <div className="text-center py-8 px-4 space-y-4">
                     <FileText className="w-8 h-8 text-gray-400 mx-auto" />
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-white">AI-Powered Journal Insights</h4>
+                      <h4 className="text-sm font-medium text-white">A.I.-Powered Journal Insights</h4>
                       <p className="text-sm text-gray-400">
-                        Our AI can analyze your journal entries to provide:
+                        Our A.I. can analyze your journal entries to provide:
                       </p>
                       <ul className="text-sm text-gray-400 space-y-1">
                         <li>• Key themes and topics</li>

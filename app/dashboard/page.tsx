@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button" // Assuming Button component is used
 import { Loader2 } from "lucide-react" // Added Loader2 for loading spinner
 import { cn } from "@/lib/utils" // Assuming cn function is imported
+import { moodLabels } from "@/lib/moods"; // Import shared moodLabels
+import Link from "next/link"; // Ensure Link is imported
 
 const gradientOptions = [
   { name: "Classic Contrast", low: "#36454F", high: "#F5F5F5" },
@@ -29,10 +31,16 @@ const gradientOptions = [
 
 interface DailyMoodData {
   date: Date;
-  averageMood?: number; // 0-100 scale
+  averageMood?: number; // 1-10 scale
   color?: string;
   entriesCount: number;
 }
+
+// Helper function to get mood emoji from shared moodLabels
+const getMoodEmoji = (moodValue: number): string => {
+  const mood = moodLabels.find(m => m.value === moodValue);
+  return mood ? mood.label : '🤔'; // Fallback emoji
+};
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
@@ -218,11 +226,12 @@ export default function Dashboard() {
       
       if (entriesForDay.length > 0) {
         const totalMood = entriesForDay.reduce((sum, entry) => sum + entry.mood, 0);
-        const averageMood = totalMood / entriesForDay.length; // mood is 0-100
+        const averageMood = totalMood / entriesForDay.length; // This average is now on a 1-10 scale if entries are consistent
         newMoodData[dayKey] = {
           date: day,
-          averageMood: averageMood,
-          color: interpolateColor(selectedMoodColors.low, selectedMoodColors.high, averageMood / 100),
+          averageMood: averageMood, 
+          // Apply (mood - 1) / 9 to normalize 1-10 scale to 0-1 factor for color interpolation
+          color: interpolateColor(selectedMoodColors.low, selectedMoodColors.high, (averageMood - 1) / 9),
           entriesCount: entriesForDay.length,
         };
       } else {
@@ -294,16 +303,25 @@ export default function Dashboard() {
         throw new Error(error.error || 'Failed to generate AI content');
       }
 
-      const { summary, affirmation } = await response.json();
+      const { summary, affirmations } = await response.json();
 
-      // Update the specific entry in the state
-      setEntries(entries.map(entry =>
-        entry.id === entryId ? { ...entry, ai_summary: summary, positive_affirmation: affirmation } : entry
-      ));
+      // Update the specific entry in the `entries` state (for calendar month view)
+      setEntries(prevEntries =>
+        prevEntries.map(e =>
+          e.id === entryId ? { ...e, ai_summary: summary, positive_affirmation: affirmations } : e
+        )
+      );
+
+      // ALSO Update the specific entry in the `recentEntries` state (for the list view)
+      setRecentEntries(prevRecentEntries =>
+        prevRecentEntries.map(e =>
+          e.id === entryId ? { ...e, ai_summary: summary, positive_affirmation: affirmations } : e
+        )
+      );
 
       toast({
-        title: "Success",
-        description: "AI content generated successfully!",
+        title: "A.I. Insight Generated",
+        description: "Summary and affirmations are now available for this entry.",
       });
 
     } catch (error: any) { // Use any for now, can refine error type later
@@ -318,19 +336,16 @@ export default function Dashboard() {
     }
   };
 
-  const averageMood0to100 = entries.length > 0
+  // Corrected average mood calculation for the stat display
+  // Assumes entry.mood in the `entries` state (for the current month) is now 1-10
+  const averageMoodForStat = entries.length > 0
     ? entries.reduce((sum, entry) => sum + entry.mood, 0) / entries.length
-    : 0;
-  
-  // Convert the 0-100 average to a 1-10 scale for display
-  // If average is 0 (input 1), result is 1. If average is 100 (input 10), result is 10.
-  const averageMood1to10 = entries.length > 0 
-    ? (averageMood0to100 / 100) * 9 + 1
     : 0;
 
   const stats = {
     entriesThisMonth: entries.length,
-    averageMoodForDisplay: entries.length > 0 ? parseFloat(averageMood1to10.toFixed(1)) : 0
+    // Use the directly calculated 1-10 average, then format to one decimal place
+    averageMoodForDisplay: entries.length > 0 ? parseFloat(averageMoodForStat.toFixed(1)) : 0
   }
 
   // Custom Day component for the calendar
@@ -344,24 +359,34 @@ export default function Dashboard() {
     if (moodData?.averageMood !== undefined && isCurrentMonth) {
       dayStyle = { 
         backgroundColor: moodData.color,
-        color: moodData.averageMood > 60 ? '#000' : '#FFF', // Adjust text color for visibility
+        color: moodData.averageMood > 6 ? '#000' : '#FFF', // Adjusted text color threshold for 1-10 scale
         borderRadius: '0.375rem', // Same as rounded-md
       };
       const mood = moodData.averageMood;
-      if (mood >= 80) moodEmoji = '🥳';
-      else if (mood >= 60) moodEmoji = '😊';
-      else if (mood >= 40) moodEmoji = '😐';
-      else if (mood >= 20) moodEmoji = '😔';
-      else moodEmoji = '😢';
+      if (mood !== undefined) {
+        moodEmoji = getMoodEmoji(Math.round(mood));
+      }
     }
 
+    const handleDateClick = () => {
+      if (!isCurrentMonth) return; // Only allow clicking days in the current month
+      const formattedDate = format(date, "yyyy-MM-dd");
+      router.push(`/search?date=${formattedDate}`);
+    };
+
     return (
-      <div
+      <button
+        type="button"
+        onClick={handleDateClick}
+        disabled={!isCurrentMonth} // Disable clicking for days outside the current month
         style={dayStyle}
         className={cn(
-          "w-full h-full flex flex-col items-center justify-center p-1 text-xs relative",
-          !isCurrentMonth && "text-gray-500 opacity-50"
+          "w-full h-full flex flex-col items-center justify-center p-1 text-xs relative focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:z-10",
+          !isCurrentMonth && "text-gray-500 opacity-50 cursor-not-allowed",
+          isCurrentMonth && "hover:bg-white/10 transition-colors", // Added hover effect for current month days
+          dayStyle.backgroundColor && isCurrentMonth && "hover:opacity-80" // Slightly dim color on hover if it has a mood color
         )}
+        aria-label={`Search entries for ${format(date, "MMMM d, yyyy")}`}
       >
         <span>{format(date, "d")}</span>
         {moodEmoji && <span className="text-sm mt-0.5">{moodEmoji}</span>}
@@ -370,7 +395,7 @@ export default function Dashboard() {
             {moodData.entriesCount}
           </span>
         )}
-        </div>
+        </button>
     );
   };
 
@@ -514,119 +539,124 @@ export default function Dashboard() {
                     </div>
                   ) : recentEntries.length > 0 ? (
                     <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
-            {recentEntries.map((entry) => (
-                        <div key={entry.id} className="bg-black/20 rounded-lg p-4 hover:bg-black/30 transition-colors">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="font-medium text-white">{entry.title}</h3>
-                              <p className="text-sm text-gray-400 mt-1">
-                                {format(new Date(entry.date), 'MMMM d, yyyy')}
-                              </p>
-                            </div>
-                            <span className="text-2xl">
-                              {entry.mood >= 80 ? '🥳' :
-                               entry.mood >= 60 ? '😊' :
-                               entry.mood >= 40 ? '😐' :
-                               entry.mood >= 20 ? '😔' : '😢'}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-300 mt-2 line-clamp-2">{entry.content}</p>
-
-                          {/* Display AI Summary and Affirmation if they exist */}
-                          {(entry.ai_summary || entry.positive_affirmation) && (
-                            <div className="mt-4 p-3 bg-white/10 rounded-md">
-                              {entry.ai_summary && (
-                                <p className="text-sm text-gray-200">
-                                  <span className="font-semibold">Summary:</span> {entry.ai_summary}
+                      {recentEntries.map((entry) => (
+                        <Link key={entry.id} href={`/search?entryId=${entry.id}`} passHref className="block mb-4 last:mb-0">
+                          <div className="block bg-black/20 rounded-lg p-4 hover:bg-black/30 transition-colors cursor-pointer">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h3 className="font-medium text-white">{entry.title}</h3>
+                                <p className="text-sm text-gray-400 mt-1">
+                                  {format(new Date(entry.date), 'MMMM d, yyyy')}
                                 </p>
-                              )}
-                              {entry.positive_affirmation && (
-                                <div className="mt-1">
-                                  <span className="font-semibold text-sm text-gray-200">Affirmations:</span>
-                                  {(() => {
-                                    let affirmationsToDisplay: { text: string; based_on?: string }[] = [];
-                                    if (typeof entry.positive_affirmation === 'string') {
-                                      try {
-                                        const parsed = JSON.parse(entry.positive_affirmation);
-                                        if (Array.isArray(parsed)) {
-                                          affirmationsToDisplay = parsed.filter(item => typeof item === 'object' && item !== null && 'text' in item);
-                                        } else if (entry.positive_affirmation && entry.positive_affirmation !== "Could not generate affirmations.") {
-                                          // If it's a string but not the error message, display as single affirmation
-                                          return <p className="text-sm text-gray-300 ml-2">- {entry.positive_affirmation}</p>;
-                                        }
-                                      } catch (e) {
-                                        // If JSON.parse fails, and it's not the error string, treat as single old affirmation
-                                        if (entry.positive_affirmation && entry.positive_affirmation !== "Could not generate affirmations.") {
-                                          return <p className="text-sm text-gray-300 ml-2">- {entry.positive_affirmation}</p>;
-                                        }
-                                      }
-                                    } else if (Array.isArray(entry.positive_affirmation)) {
-                                      affirmationsToDisplay = entry.positive_affirmation.filter(item => typeof item === 'object' && item !== null && 'text' in item);
-                                    }
-
-                                    if (affirmationsToDisplay.length > 0) {
-                                      return (
-                                        <ul className="list-disc list-inside ml-2 space-y-1">
-                                          {affirmationsToDisplay.map((aff, index) => (
-                                            <li key={index} className="text-sm text-gray-300">
-                                              {aff.text}
-                                              {aff.based_on && aff.based_on !== "N/A" && (
-                                                <span className="text-xs text-gray-400 italic"> (Based on: "{aff.based_on}")</span>
-                                              )}
-              </li>
-            ))}
-          </ul>
-                                      );
-                                    } else if (entry.ai_summary && entry.ai_summary !== "Could not generate summary." && entry.positive_affirmation === "Could not generate affirmations.") {
-                                       return <p className="text-sm text-gray-400 ml-2">The AI analyzed this entry but couldn't find enough information to generate affirmations.</p>;
-                                    } else if (entry.positive_affirmation) {
-                                       // Fallback for any other string case, including "Could not generate affirmations."
-                                       return <p className="text-sm text-gray-400 ml-2">{entry.positive_affirmation || "No affirmations available."}</p>;
-                                    }
-                                    return null;
-                                  })()}
-                                </div>
-                              )}
+                              </div>
+                              <span className="text-2xl">
+                                {/* Updated emoji logic for 1-10 scale */}
+                                {/* {entry.mood >= 9 ? '🥳' :
+                                 entry.mood >= 7 ? '😊' :
+                                 entry.mood >= 5 ? '😐' :
+                                 entry.mood >= 3 ? '😔' :
+                                 entry.mood >= 1 ? '😢' : '🤔'} */}
+                                {getMoodEmoji(entry.mood)}
+                              </span>
                             </div>
-                          )}
+                            <p className="text-sm text-gray-300 mt-2 line-clamp-2">{entry.content}</p>
 
-                          {/* AI Generation Button - Conditionally render if summary OR affirmation is missing */}
-                          {(!entry.ai_summary || entry.ai_summary === "Could not generate summary." || !entry.positive_affirmation || entry.positive_affirmation === "Could not generate affirmations." || (Array.isArray(entry.positive_affirmation) && entry.positive_affirmation.length === 0) ) && (
-                            <div className="mt-4 text-right">
-                              <Button
-                                onClick={() => handleGenerateAi(entry.id)}
-                                disabled={generatingAi === entry.id || generatingAi !== null}
-                                size="sm"
-                                className="bg-white/10 hover:bg-white/20 text-white"
-                              >
-                                {generatingAi === entry.id ? (
-                                  <div className="flex items-center">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                    Generating...
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center">
-                                    <Sparkles className="w-4 h-4 mr-2" />
-                                    Generate AI Insight
+                            {/* Display AI Summary and Affirmation if they exist */}
+                            {(entry.ai_summary || entry.positive_affirmation) && (
+                              <div className="mt-4 p-3 bg-white/10 rounded-md">
+                                {entry.ai_summary && (
+                                  <p className="text-sm text-gray-200">
+                                    <span className="font-semibold">Summary:</span> {entry.ai_summary}
+                                  </p>
+                                )}
+                                {entry.positive_affirmation && (
+                                  <div className="mt-1">
+                                    <span className="font-semibold text-sm text-gray-200">Affirmations:</span>
+                                    {(() => {
+                                      let affirmationsToDisplay: { text: string; based_on?: string }[] = [];
+                                      if (typeof entry.positive_affirmation === 'string') {
+                                        try {
+                                          const parsed = JSON.parse(entry.positive_affirmation);
+                                          if (Array.isArray(parsed)) {
+                                            affirmationsToDisplay = parsed.filter(item => typeof item === 'object' && item !== null && 'text' in item);
+                                          } else if (entry.positive_affirmation && entry.positive_affirmation !== "Could not generate affirmations.") {
+                                            // If it's a string but not the error message, display as single affirmation
+                                            return <p className="text-sm text-gray-300 ml-2">- {entry.positive_affirmation}</p>;
+                                          }
+                                        } catch (e) {
+                                          // If JSON.parse fails, and it's not the error string, treat as single old affirmation
+                                          if (entry.positive_affirmation && entry.positive_affirmation !== "Could not generate affirmations.") {
+                                            return <p className="text-sm text-gray-300 ml-2">- {entry.positive_affirmation}</p>;
+                                          }
+                                        }
+                                      } else if (Array.isArray(entry.positive_affirmation)) {
+                                        affirmationsToDisplay = entry.positive_affirmation.filter(item => typeof item === 'object' && item !== null && 'text' in item);
+                                      }
+
+                                      if (affirmationsToDisplay.length > 0) {
+                                        return (
+                                          <ul className="list-disc list-inside ml-2 space-y-1">
+                                            {affirmationsToDisplay.map((aff, index) => (
+                                              <li key={index} className="text-sm text-gray-300">
+                                                {aff.text}
+                                                {aff.based_on && aff.based_on !== "N/A" && (
+                                                  <span className="text-xs text-gray-400 italic"> (Based on: "{aff.based_on}")</span>
+                                                )}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        );
+                                      } else if (entry.ai_summary && entry.ai_summary !== "Could not generate summary." && entry.positive_affirmation === "Could not generate affirmations.") {
+                                         return <p className="text-sm text-gray-400 ml-2">The AI analyzed this entry but couldn't find enough information to generate affirmations.</p>;
+                                      } else if (entry.positive_affirmation) {
+                                         // Fallback for any other string case, including "Could not generate affirmations."
+                                         return <p className="text-sm text-gray-400 ml-2">{entry.positive_affirmation || "No affirmations available."}</p>;
+                                      }
+                                      return null;
+                                    })()}
                                   </div>
                                 )}
-                              </Button>
-                            </div>
-                          )}
+                              </div>
+                            )}
 
-                          {entry.hashtags.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {entry.hashtags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="text-xs bg-white/10 px-2 py-1 rounded-full text-gray-300"
+                            {/* AI Generation Button - Conditionally render if summary OR affirmation is missing */}
+                            {(!entry.ai_summary || entry.ai_summary === "Could not generate summary." || !entry.positive_affirmation || entry.positive_affirmation === "Could not generate affirmations." || (Array.isArray(entry.positive_affirmation) && entry.positive_affirmation.length === 0) ) && (
+                              <div className="mt-4 text-right">
+                                <Button
+                                  onClick={() => handleGenerateAi(entry.id)}
+                                  disabled={generatingAi === entry.id || generatingAi !== null}
+                                  size="sm"
+                                  className="bg-white/10 hover:bg-white/20 text-white"
                                 >
-                                  #{tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-        </div>
+                                  {generatingAi === entry.id ? (
+                                    <div className="flex items-center">
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                      Generating...
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center">
+                                      <Sparkles className="w-4 h-4 mr-2" />
+                                      Generate A.I. Insight
+                                    </div>
+                                  )}
+                                </Button>
+                              </div>
+                            )}
+
+                            {entry.hashtags.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {entry.hashtags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="text-xs bg-white/10 px-2 py-1 rounded-full text-gray-300"
+                                  >
+                                    #{tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </Link>
                       ))}
                       {hasMoreRecentEntries && (
                         <button
@@ -640,14 +670,14 @@ export default function Dashboard() {
                             "Load More Recent Entries"
                           )}
                         </button>
-          )}
-        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="text-center py-8 text-gray-400">
                       No recent entries found.
                     </div>
                   )}
-        </div>
+                </div>
           </div>
         </div>
       </div>

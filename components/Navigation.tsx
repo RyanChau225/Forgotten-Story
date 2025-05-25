@@ -48,7 +48,7 @@ export default function Navigation() {
   const isActive = (path: string) => pathname === path
 
   const navItems = [
-    { name: "Home", href: "/", icon: Home, public: true },
+    { name: "Home", href: "/", icon: Home, public: false },
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, public: false },
     { name: "Notifications", href: "/notifications", icon: Bell, public: false },
     { name: "Search Entries", href: "/search", icon: BookOpen, public: false },
@@ -67,18 +67,6 @@ export default function Navigation() {
               <span className="text-xl font-semibold text-white group-hover:text-yellow-500 transition-colors">
                 Forgotten Story
               </span>
-            </Link>
-
-            <Link
-              href="/"
-              className={`px-4 py-2 rounded-xl flex items-center space-x-2 transition-all duration-200 ${
-                isActive("/")
-                  ? "bg-white/10 text-white backdrop-blur-sm"
-                  : "text-gray-400 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <Home className="w-4 h-4" />
-              <span>Home</span>
             </Link>
           </div>
 
