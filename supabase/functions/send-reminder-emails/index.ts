@@ -275,12 +275,15 @@ serve(async (req) => {
             "A Cherished Moment, Revisited..."
           ];
           const randomIntrigue = intrigueLines[Math.floor(Math.random() * intrigueLines.length)];
-          const teaserLength = 40; // Max length for the AI summary teaser
-          const subjectTeaser = entrySummaryForSubject.length > teaserLength 
-            ? entrySummaryForSubject.substring(0, teaserLength) + '...' 
-            : entrySummaryForSubject;
 
-          const emailSubject = `${randomIntrigue} | Forgotten Story: ${subjectTeaser}`;
+          // Shorter teaser for the subject line, ensuring it doesn't break words awkwardly if possible
+          let subjectTeaser = entrySummaryForSubject;
+          if (subjectTeaser.length > 40) {
+            const lastSpace = subjectTeaser.substring(0, 40).lastIndexOf(' ');
+            subjectTeaser = lastSpace > 0 ? subjectTeaser.substring(0, lastSpace) + "..." : subjectTeaser.substring(0, 37) + "...";
+          }
+
+          const emailSubject = `${randomIntrigue} | ${subjectTeaser}`;
           
           const emailHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 5px;">

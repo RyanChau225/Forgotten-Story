@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { format } from "date-fns"
-import { Search, Filter, SortAsc, SortDesc, ArrowUpDown, Trash2, FileText, X, Calendar as CalendarIcon, Sparkles, Loader2 } from "lucide-react"
+import { Search, Filter, SortAsc, SortDesc, ArrowUpDown, Trash2, FileText, X, Calendar as CalendarIcon, Sparkles, Loader2, Edit3 } from "lucide-react"
 import { Entry, searchEntries, deleteEntry } from "@/lib/api"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
@@ -10,6 +10,19 @@ import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+
+const moodLabels = [
+  { value: 1, label: "😭", description: "Overwhelmed" },
+  { value: 2, label: "😢", description: "Very Sad" },
+  { value: 3, label: "😔", description: "Sad" },
+  { value: 4, label: "🙁", description: "Slightly Down" },
+  { value: 5, label: "😐", description: "Neutral" },
+  { value: 6, label: "🙂", description: "Okay" },
+  { value: 7, label: "😊", description: "Happy" },
+  { value: 8, label: "😄", description: "Very Happy" },
+  { value: 9, label: "🥳", description: "Ecstatic" },
+  { value: 10, label: "🤩", description: "Blissful" }
+];
 
 type SortField = "date" | "mood" | "title"
 type SortDirection = "asc" | "desc"
@@ -40,12 +53,16 @@ export default function SearchPage() {
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState({
+
+  // Initial filter state - ensure they are non-restrictive by default
+  const initialFiltersState = {
     startDate: "",
     endDate: "",
-    moodRange: [1, 6] as [number, number],
+    moodRange: [1, 10] as [number, number], // Default to full range, assuming moods are 1-10
     hashtags: [] as string[]
-  })
+  };
+  const [filters, setFilters] = useState(initialFiltersState)
+
   const [sortField, setSortField] = useState<SortField>("date")
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
   const [hashtagInput, setHashtagInput] = useState("")
@@ -57,14 +74,6 @@ export default function SearchPage() {
   const router = useRouter()
   const [isSearching, setIsSearching] = useState(false)
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
-
-  const convertMoodToScale = (mood: number) => {
-    return Math.ceil(mood / 20) + 1
-  }
-
-  const convertScaleToMood = (scale: number) => {
-    return (scale - 1) * 20
-  }
 
   // Add debounced search effect
   useEffect(() => {
@@ -82,8 +91,8 @@ export default function SearchPage() {
       const { entries: results } = await searchEntries(debouncedQuery, {
         startDate: filters.startDate,
         endDate: filters.endDate,
-        minMood: convertScaleToMood(filters.moodRange[0]),
-        maxMood: convertScaleToMood(filters.moodRange[1]),
+        minMood: filters.moodRange[0],
+        maxMood: filters.moodRange[1],
         hashtags: filters.hashtags
       })
 
@@ -159,11 +168,8 @@ export default function SearchPage() {
   }
 
   const getMoodEmoji = (mood: number) => {
-    if (mood >= 80) return '🥳'
-    if (mood >= 60) return '😊'
-    if (mood >= 40) return '😐'
-    if (mood >= 20) return '😔'
-    return '😢'
+    const moodLabel = moodLabels.find(m => m.value === mood);
+    return moodLabel ? moodLabel.label : '😐';
   }
 
   // Update the search form handler
@@ -297,6 +303,13 @@ export default function SearchPage() {
     }
   };
 
+  const handleClearFilters = () => {
+    setQuery(""); // Clear search query as well
+    setDebouncedQuery("");
+    setFilters(initialFiltersState);
+    // performSearch will be triggered by the useEffect watching `filters` and `debouncedQuery`
+  };
+
   return (
     <div className="container mx-auto px-4 pt-24 pb-8">
       <div className="max-w-7xl mx-auto">
@@ -307,7 +320,7 @@ export default function SearchPage() {
             {/* Search Input */}
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
               <form onSubmit={handleSearch} className="space-y-4">
-                <div className="relative">
+                <div className="relative mb-4">
                   <input
                     type="text"
                     value={query}
@@ -317,6 +330,14 @@ export default function SearchPage() {
                   />
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 </div>
+                <Button 
+                  type="button" 
+                  onClick={handleClearFilters}
+                  variant="outline"
+                  className="w-full bg-white/5 hover:bg-white/10 text-gray-300 border-white/20"
+                >
+                  Clear All Filters & Search
+                </Button>
               </form>
             </div>
 
@@ -374,12 +395,11 @@ export default function SearchPage() {
                             className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm"
                             style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
                           >
-                            <option value={1} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>1 - Very Sad</option>
-                            <option value={2} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>2 - Sad</option>
-                            <option value={3} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>3 - Neutral</option>
-                            <option value={4} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>4 - Happy</option>
-                            <option value={5} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>5 - Very Happy</option>
-                            <option value={6} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>6 - Too Happy!</option>
+                            {moodLabels.map(mood => (
+                              <option key={mood.value} value={mood.value} style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
+                                {`${mood.value} - ${mood.description}`}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <div>
@@ -390,24 +410,23 @@ export default function SearchPage() {
                             className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm"
                             style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
                           >
-                            <option value={1} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>1 - Very Sad</option>
-                            <option value={2} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>2 - Sad</option>
-                            <option value={3} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>3 - Neutral</option>
-                            <option value={4} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>4 - Happy</option>
-                            <option value={5} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>5 - Very Happy</option>
-                            <option value={6} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>6 - Too Happy!</option>
+                            {moodLabels.map(mood => (
+                              <option key={mood.value} value={mood.value} style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
+                                {`${mood.value} - ${mood.description}`}
+                              </option>
+                            ))}
                           </select>
                         </div>
                       </div>
                       <div className="bg-black/40 rounded-lg p-3">
                         <h4 className="text-xs font-medium text-gray-400 mb-2">Mood Guide</h4>
-                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-                          <div>1 - Very Sad 😢</div>
-                          <div>4 - Happy 🙂</div>
-                          <div>2 - Sad 😔</div>
-                          <div>5 - Very Happy 😊</div>
-                          <div>3 - Neutral 😐</div>
-                          <div>6 - Too Happy! 🥳</div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+                          {moodLabels.slice(0, 5).map(mood => (
+                            <div key={`guide-${mood.value}`}>{`${mood.value} - ${mood.description} ${mood.label}`}</div>
+                          ))}
+                          {moodLabels.slice(5, 10).map(mood => (
+                            <div key={`guide-${mood.value}`}>{`${mood.value} - ${mood.description} ${mood.label}`}</div>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -429,9 +448,16 @@ export default function SearchPage() {
                         {filters.hashtags.map(tag => (
                           <span
                             key={tag}
-                            className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-500 text-xs"
+                            className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-300 text-xs"
                           >
                             #{tag}
+                            <button
+                              onClick={() => removeHashtag(tag)}
+                              className="ml-1.5 p-0.5 hover:bg-yellow-500/30 rounded-full"
+                              aria-label={`Remove ${tag} filter`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
                           </span>
                         ))}
                       </div>
@@ -616,10 +642,21 @@ export default function SearchPage() {
                         {format(new Date(selectedEntry.date), "MMMM d, yyyy")}
                       </p>
                     </div>
-                    <span className="text-3xl">{getMoodEmoji(selectedEntry.mood)}</span>
+                    <div className="flex items-center gap-3">
+                      <Button 
+                        variant="outline"
+                        size="icon"
+                        onClick={() => router.push(`/new-entry?id=${selectedEntry.id}`)}
+                        className="p-2 bg-white/10 hover:bg-white/20 border-white/20"
+                        aria-label="Edit Entry"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </Button>
+                      <span className="text-3xl">{getMoodEmoji(selectedEntry.mood)}</span>
+                    </div>
                   </div>
 
-                  <div className="prose prose-invert max-w-none">
+                  <div className="prose prose-invert max-w-none mb-6">
                     <p className="text-gray-300 whitespace-pre-wrap">{selectedEntry.content}</p>
                   </div>
 
@@ -674,11 +711,24 @@ export default function SearchPage() {
           <div className={`hidden lg:block lg:space-y-8 ${scrollbarStyles}`}>
             {/* Filters Box */}
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-lg font-semibold text-white mb-6">Filters</h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-white">Filters</h3>
+                <Button 
+                  type="button" 
+                  onClick={handleClearFilters}
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  Clear Filters
+                </Button>
+              </div>
               <div className="space-y-6">
                 {/* Date Range */}
                 <div className="pb-6 border-b border-white/5">
-                  <h4 className="text-base font-medium text-white mb-4">Date Range</h4>
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-base font-medium text-white">Date Range</h4>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">
@@ -713,7 +763,9 @@ export default function SearchPage() {
 
                 {/* Mood Range */}
                 <div className="pb-6 border-b border-white/5">
-                  <h4 className="text-base font-medium text-white mb-4">Mood Range</h4>
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-base font-medium text-white">Mood Range</h4>
+                  </div>
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -724,12 +776,11 @@ export default function SearchPage() {
                           className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm"
                           style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
                         >
-                          <option value={1} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>1 - Very Sad</option>
-                          <option value={2} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>2 - Sad</option>
-                          <option value={3} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>3 - Neutral</option>
-                          <option value={4} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>4 - Happy</option>
-                          <option value={5} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>5 - Very Happy</option>
-                          <option value={6} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>6 - Too Happy!</option>
+                          {moodLabels.map(mood => (
+                            <option key={mood.value} value={mood.value} style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
+                              {`${mood.value} - ${mood.description}`}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div>
@@ -740,24 +791,23 @@ export default function SearchPage() {
                           className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm"
                           style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
                         >
-                          <option value={1} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>1 - Very Sad</option>
-                          <option value={2} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>2 - Sad</option>
-                          <option value={3} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>3 - Neutral</option>
-                          <option value={4} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>4 - Happy</option>
-                          <option value={5} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>5 - Very Happy</option>
-                          <option value={6} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>6 - Too Happy!</option>
+                          {moodLabels.map(mood => (
+                            <option key={mood.value} value={mood.value} style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
+                              {`${mood.value} - ${mood.description}`}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
                     <div className="bg-black/40 rounded-lg p-3">
                       <h4 className="text-xs font-medium text-gray-400 mb-2">Mood Guide</h4>
-                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-                        <div>1 - Very Sad 😢</div>
-                        <div>4 - Happy 🙂</div>
-                        <div>2 - Sad 😔</div>
-                        <div>5 - Very Happy 😊</div>
-                        <div>3 - Neutral 😐</div>
-                        <div>6 - Too Happy! 🥳</div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+                        {moodLabels.slice(0, 5).map(mood => (
+                          <div key={`guide-desktop-${mood.value}`}>{`${mood.value} - ${mood.description} ${mood.label}`}</div>
+                        ))}
+                        {moodLabels.slice(5, 10).map(mood => (
+                          <div key={`guide-desktop-${mood.value}`}>{`${mood.value} - ${mood.description} ${mood.label}`}</div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -765,7 +815,9 @@ export default function SearchPage() {
 
                 {/* Hashtags */}
                 <div className="pt-2">
-                  <h4 className="text-base font-medium text-white mb-4">Hashtags</h4>
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-base font-medium text-white">Hashtags</h4>
+                  </div>
                   <input
                     type="text"
                     value={hashtagInput}
@@ -779,9 +831,16 @@ export default function SearchPage() {
                       {filters.hashtags.map(tag => (
                         <span
                           key={tag}
-                          className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-500 text-xs"
+                          className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-300 text-xs"
                         >
                           #{tag}
+                          <button
+                            onClick={() => removeHashtag(tag)}
+                            className="ml-1.5 p-0.5 hover:bg-yellow-500/30 rounded-full"
+                            aria-label={`Remove ${tag} filter`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
                         </span>
                       ))}
                     </div>

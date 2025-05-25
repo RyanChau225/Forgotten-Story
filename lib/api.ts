@@ -23,9 +23,20 @@ export type Entry = {
 }
 
 // API Functions
-export async function getEntries(page = 1, limit = 10) {
+export async function getEntries(page = 1, limit = 10, startDate?: string, endDate?: string) {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  if (startDate) {
+    params.append('startDate', startDate);
+  }
+  if (endDate) {
+    params.append('endDate', endDate);
+  }
+
   const response = await fetch(
-    `/api/entries?page=${page}&limit=${limit}`,
+    `/api/entries?${params.toString()}`,
     {
       method: 'GET',
       headers: {
@@ -96,4 +107,20 @@ export async function deleteEntry(id: string) {
   })
   if (!response.ok) throw new Error('Failed to delete entry')
   return response.json()
+}
+
+// New function to fetch a single entry by ID
+export async function getEntryById(id: string): Promise<Entry> {
+  const response = await fetch(`/api/entries/${id}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!response.ok) {
+    if (response.status === 404) throw new Error('Entry not found');
+    const errorData = await response.json().catch(() => ({ error: 'Failed to fetch entry' }));
+    throw new Error(errorData.error || 'Failed to fetch entry');
+  }
+  return response.json();
 } 

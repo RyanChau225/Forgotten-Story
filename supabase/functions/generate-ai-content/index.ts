@@ -25,6 +25,10 @@ interface RequestPayload {
 
 // Get the API key from environment variables
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+// Define the model name as a constant
+const MODEL_NAME = "gemini-2.5-flash-preview-05-20"; // Updated model
+
 if (!GEMINI_API_KEY) {
   console.error("GEMINI_API_KEY environment variable not set.");
   // Optional: throw an error or handle it to prevent the function from running without an API key
@@ -32,7 +36,7 @@ if (!GEMINI_API_KEY) {
 
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const model = genAI ? genAI.getGenerativeModel({ 
-  model: "gemini-2.5-flash-preview-04-17" // Corrected model ID
+  model: MODEL_NAME
 }) : null;
 
 serve(async (req: Request) => {

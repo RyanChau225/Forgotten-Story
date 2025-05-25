@@ -2,38 +2,69 @@
 
 import { useState, useEffect } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { Book, Calendar, Hash, Smile, BarChart3, Clock, TrendingUp, Sparkles } from "lucide-react" // Added Sparkles icon
+import { Book, Calendar as CalendarIconUI, Hash, Smile, TrendingUp, Sparkles, Palette } from "lucide-react" // Updated Calendar import, Added Palette
 import CenteredLayout from "@/components/CenteredLayout"
-import { Entry, getEntries } from "@/lib/api"
-import { format } from "date-fns"
+import { Entry, getEntries } from "@/lib/api" // Assuming getEntries can be adapted for monthly fetching
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, set } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { Calendar } from "@/components/ui/calendar" // Shadcn Calendar
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button" // Assuming Button component is used
+import { Loader2 } from "lucide-react" // Added Loader2 for loading spinner
+import { cn } from "@/lib/utils" // Assuming cn function is imported
 
-const timeFrames = ["Week", "Month", "Year"]
+const gradientOptions = [
+  { name: "Classic Contrast", low: "#36454F", high: "#F5F5F5" },
+  { name: "Cool & Calm", low: "#2E3A48", high: "#87CEEB" }, // Using the alternative for a clearer distinction
+  { name: "Earthy & Revitalized", low: "#556B2F", high: "#90EE90" },
+  { name: "Warm Dawn", low: "#6A0DAD", high: "#FFD700" }, // Using purple variant for diversity
+  { name: "Modern & Serene", low: "#708090", high: "#40E0D0" },
+  { name: "Fiery & Passionate", low: "#A0522D", high: "#FF7F50" },
+  { name: "Twilight to Daylight", low: "#191970", high: "#FFDAB9" },
+  { name: "Deep Ocean to Shallows", low: "#005050", high: "#AFEEEE" },
+  { name: "Subtle & Gentle", low: "#BDB5D0", high: "#FFE4E1" },
+  { name: "Monochromatic Cool", low: "#2F4F4F", high: "#B0E0E6" },
+];
 
-// Mock mood data for visualization
-const moodBars = [
-  { value: 65, label: "Jun" },
-  { value: 80, label: "Jul" },
-  { value: 75, label: "Aug" },
-  { value: 90, label: "Sep" },
-  { value: 85, label: "Oct" },
-  { value: 95, label: "Nov" },
-  { value: 88, label: "Dec" },
-]
+interface DailyMoodData {
+  date: Date;
+  averageMood?: number; // 0-100 scale
+  color?: string;
+  entriesCount: number;
+}
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
-  const [selectedTimeFrame, setSelectedTimeFrame] = useState("Month")
-  const [entries, setEntries] = useState<Entry[]>([])
+  const [entries, setEntries] = useState<Entry[]>([]) // This will now store entries for the currentDisplayMonth
+  const [allTimeEntryCount, setAllTimeEntryCount] = useState(0); // New state for all-time entry count
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  const [generatingAi, setGeneratingAi] = useState<string | null>(null); // State to track which entry is generating AI
+  const [generatingAi, setGeneratingAi] = useState<string | null>(null);
   const { toast } = useToast()
   const router = useRouter()
   const supabase = createClientComponentClient()
+
+  const [currentDisplayMonth, setCurrentDisplayMonth] = useState(new Date());
+  const [monthlyMoods, setMonthlyMoods] = useState<Record<string, DailyMoodData>>({});
+  const [selectedMoodColors, setSelectedMoodColors] = useState(() => {
+    // Initialize from localStorage or default
+    if (typeof window !== 'undefined') {
+      const savedGradientName = localStorage.getItem("selectedMoodGradient");
+      if (savedGradientName) {
+        const savedGradient = gradientOptions.find(g => g.name === savedGradientName);
+        if (savedGradient) {
+          return savedGradient;
+        }
+      }
+    }
+    return gradientOptions[0]; // Default to Classic Contrast
+  }); // Default to Classic Contrast
+
+  // State for the "Recent Entries" list, separate from calendar entries
+  const [recentEntries, setRecentEntries] = useState<Entry[]>([]);
+  const [recentEntriesPage, setRecentEntriesPage] = useState(1);
+  const [hasMoreRecentEntries, setHasMoreRecentEntries] = useState(true);
+  const [loadingRecentEntries, setLoadingRecentEntries] = useState(true);
 
   useEffect(() => {
     const getUser = async () => {
@@ -56,47 +87,193 @@ export default function Dashboard() {
     return () => subscription.unsubscribe()
   }, [supabase.auth, router])
 
-  // Fetch entries
+  // Effect to load selected gradient from localStorage on mount
   useEffect(() => {
-    async function fetchEntries() {
+    const savedGradientName = localStorage.getItem("selectedMoodGradient");
+    if (savedGradientName) {
+      const savedGradient = gradientOptions.find(g => g.name === savedGradientName);
+      if (savedGradient) {
+        setSelectedMoodColors(savedGradient);
+      }
+    }
+  }, []);
+
+  // Fetch entries for the currentDisplayMonth
+  useEffect(() => {
+    async function fetchMonthlyEntries() {
+      if (!user) return;
+      setLoading(true);
       try {
-        const { entries: newEntries, hasMore: more } = await getEntries(1)
-        setEntries(newEntries)
-        setHasMore(more)
-        setLoading(false)
+        const startDate = startOfMonth(currentDisplayMonth);
+        const endDate = endOfMonth(currentDisplayMonth);
+        
+        // TODO: Adapt getEntries or create a new API to fetch entries by date range
+        // For now, we'll assume getEntries can be modified or a new function is created
+        // This is a placeholder call, actual API will need to support date range
+        const { entries: fetchedEntries } = await getEntries(1, 100, startDate.toISOString(), endDate.toISOString()) // Placeholder limit & page
+        
+        setEntries(fetchedEntries || []);
       } catch (error) {
-        console.error('Error fetching entries:', error)
+        console.error('Error fetching monthly entries:', error)
         toast({
           title: "Error",
-          description: "Failed to load entries. Please try again.",
+          description: "Failed to load entries for the month. Please try again.",
           variant: "destructive",
         })
-        setLoading(false)
+      } finally {
+        setLoading(false);
       }
     }
 
-    if (user) {
-      fetchEntries()
-    }
-  }, [user, toast])
+    fetchMonthlyEntries()
+  }, [user, currentDisplayMonth, toast])
 
-  // Load more entries
-  const loadMore = async () => {
+  // Fetch initial batch of recent entries (for the list below calendar)
+  useEffect(() => {
+    async function fetchInitialRecentEntries() {
+      if (!user) return;
+      setLoadingRecentEntries(true);
+      try {
+        // Fetch the first page of all entries, ordered by most recent
+        const { entries: fetchedEntries, hasMore } = await getEntries(1, 5); // Show 5 initially
+        setRecentEntries(fetchedEntries || []);
+        setHasMoreRecentEntries(hasMore);
+        setRecentEntriesPage(1);
+      } catch (error) {
+        console.error('Error fetching initial recent entries:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load recent entries list.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingRecentEntries(false);
+      }
+    }
+    fetchInitialRecentEntries();
+  }, [user, toast]);
+
+  // New useEffect to fetch all-time total entries
+  useEffect(() => {
+    async function fetchAllTimeEntryCount() {
+      if (!user) return;
+      try {
+        // Assuming getEntries can return total count with limit 0 or specific param
+        // Or use a dedicated count endpoint if available
+        const { total } = await getEntries(1, 1); // Fetch with limit 1 just to get the total count
+        setAllTimeEntryCount(total || 0);
+      } catch (error) {
+        console.error('Error fetching all-time entry count:', error);
+        // Optionally, show a toast message for this error
+      }
+    }
+    fetchAllTimeEntryCount();
+  }, [user]);
+
+  const loadMoreRecentEntries = async () => {
+    if (!user || !hasMoreRecentEntries || loadingRecentEntries) return;
+    setLoadingRecentEntries(true);
     try {
-      const nextPage = page + 1
-      const { entries: newEntries, hasMore: more } = await getEntries(nextPage)
-      setEntries([...entries, ...newEntries])
-      setHasMore(more)
-      setPage(nextPage)
+      const nextPage = recentEntriesPage + 1;
+      const { entries: newEntries, hasMore } = await getEntries(nextPage, 5);
+      setRecentEntries(prev => [...prev, ...(newEntries || [])]);
+      setHasMoreRecentEntries(hasMore);
+      setRecentEntriesPage(nextPage);
     } catch (error) {
-      console.error('Error loading more entries:', error)
+      console.error('Error loading more recent entries:', error);
       toast({
         title: "Error",
-        description: "Failed to load more entries. Please try again.",
+        description: "Failed to load more recent entries.",
         variant: "destructive",
-      })
+      });
+    } finally {
+      setLoadingRecentEntries(false);
     }
+  };
+  
+  // Process entries to calculate daily average moods and colors
+  useEffect(() => {
+    if (!entries.length && !loading) { // only process if entries are loaded or if loading is done and entries are empty
+      const daysInMonth = eachDayOfInterval({
+        start: startOfMonth(currentDisplayMonth),
+        end: endOfMonth(currentDisplayMonth),
+      });
+      const newMoodData: Record<string, DailyMoodData> = {};
+      daysInMonth.forEach(day => {
+        newMoodData[format(day, "yyyy-MM-dd")] = { date: day, entriesCount: 0 };
+      });
+      setMonthlyMoods(newMoodData); // Initialize with all days
+      return;
+    }
+
+    const newMoodData: Record<string, DailyMoodData> = {};
+    const daysInMonth = eachDayOfInterval({
+      start: startOfMonth(currentDisplayMonth),
+      end: endOfMonth(currentDisplayMonth),
+    });
+
+    daysInMonth.forEach(day => {
+      const dayKey = format(day, "yyyy-MM-dd");
+      const entriesForDay = entries.filter(entry => format(new Date(entry.date), "yyyy-MM-dd") === dayKey);
+      
+      if (entriesForDay.length > 0) {
+        const totalMood = entriesForDay.reduce((sum, entry) => sum + entry.mood, 0);
+        const averageMood = totalMood / entriesForDay.length; // mood is 0-100
+        newMoodData[dayKey] = {
+          date: day,
+          averageMood: averageMood,
+          color: interpolateColor(selectedMoodColors.low, selectedMoodColors.high, averageMood / 100),
+          entriesCount: entriesForDay.length,
+        };
+      } else {
+        newMoodData[dayKey] = { date: day, entriesCount: 0 };
+      }
+    });
+    setMonthlyMoods(newMoodData);
+  }, [entries, currentDisplayMonth, selectedMoodColors, loading]);
+
+
+  // Helper function to interpolate color
+  // Factor is 0 (low mood) to 1 (high mood)
+  function interpolateColor(color1: string, color2: string, factor: number): string {
+    if (factor <= 0) return color1;
+    if (factor >= 1) return color2;
+    // Ensure colors are valid hex codes
+    const validHex = /^#[0-9A-F]{6}$/i;
+    if (!validHex.test(color1) || !validHex.test(color2)) {
+        // console.warn("Invalid color format for interpolation. Using defaults.");
+        color1 = selectedMoodColors.low; // Fallback to default
+        color2 = selectedMoodColors.high;
+    }
+
+    const r1 = parseInt(color1.substring(1, 3), 16);
+    const g1 = parseInt(color1.substring(3, 5), 16);
+    const b1 = parseInt(color1.substring(5, 7), 16);
+
+    const r2 = parseInt(color2.substring(1, 3), 16);
+    const g2 = parseInt(color2.substring(3, 5), 16);
+    const b2 = parseInt(color2.substring(5, 7), 16);
+
+    const r = Math.round(r1 + factor * (r2 - r1));
+    const g = Math.round(g1 + factor * (g2 - g1));
+    const b = Math.round(b1 + factor * (b2 - b1));
+
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
   }
+
+  const handleMonthChange = (month: Date) => {
+    setCurrentDisplayMonth(month);
+  };
+
+  const handleGradientChange = (gradientName: string) => {
+    const selectedGradient = gradientOptions.find(g => g.name === gradientName);
+    if (selectedGradient) {
+      setSelectedMoodColors(selectedGradient);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("selectedMoodGradient", selectedGradient.name);
+      }
+    }
+  };
 
   // Handle AI generation
   const handleGenerateAi = async (entryId: string) => {
@@ -141,15 +318,61 @@ export default function Dashboard() {
     }
   };
 
+  const averageMood0to100 = entries.length > 0
+    ? entries.reduce((sum, entry) => sum + entry.mood, 0) / entries.length
+    : 0;
+  
+  // Convert the 0-100 average to a 1-10 scale for display
+  // If average is 0 (input 1), result is 1. If average is 100 (input 10), result is 10.
+  const averageMood1to10 = entries.length > 0 
+    ? (averageMood0to100 / 100) * 9 + 1
+    : 0;
 
-  // Calculate stats
   const stats = {
-    totalEntries: entries.length,
-    uniqueTags: [...new Set(entries.flatMap(entry => entry.hashtags))].length,
-    averageMood: entries.length > 0
-      ? Math.round(entries.reduce((sum, entry) => sum + entry.mood, 0) / entries.length)
-      : 0
+    entriesThisMonth: entries.length,
+    averageMoodForDisplay: entries.length > 0 ? parseFloat(averageMood1to10.toFixed(1)) : 0
   }
+
+  // Custom Day component for the calendar
+  const CustomDay = ({ date, displayMonth }: { date: Date; displayMonth: Date }) => {
+    const dayKey = format(date, "yyyy-MM-dd");
+    const moodData = monthlyMoods[dayKey];
+    const isCurrentMonth = date.getMonth() === displayMonth.getMonth();
+    let dayStyle = {};
+    let moodEmoji = "";
+
+    if (moodData?.averageMood !== undefined && isCurrentMonth) {
+      dayStyle = { 
+        backgroundColor: moodData.color,
+        color: moodData.averageMood > 60 ? '#000' : '#FFF', // Adjust text color for visibility
+        borderRadius: '0.375rem', // Same as rounded-md
+      };
+      const mood = moodData.averageMood;
+      if (mood >= 80) moodEmoji = '🥳';
+      else if (mood >= 60) moodEmoji = '😊';
+      else if (mood >= 40) moodEmoji = '😐';
+      else if (mood >= 20) moodEmoji = '😔';
+      else moodEmoji = '😢';
+    }
+
+    return (
+      <div
+        style={dayStyle}
+        className={cn(
+          "w-full h-full flex flex-col items-center justify-center p-1 text-xs relative",
+          !isCurrentMonth && "text-gray-500 opacity-50"
+        )}
+      >
+        <span>{format(date, "d")}</span>
+        {moodEmoji && <span className="text-sm mt-0.5">{moodEmoji}</span>}
+        {moodData && moodData.entriesCount > 1 && isCurrentMonth && (
+          <span className="absolute bottom-0.5 right-0.5 text-[8px] bg-black/30 text-white px-0.5 rounded-full">
+            {moodData.entriesCount}
+          </span>
+        )}
+        </div>
+    );
+  };
 
   return (
     <div className="min-h-screen w-full bg-[url('/mountains.jpg')] bg-cover bg-center">
@@ -162,23 +385,8 @@ export default function Dashboard() {
               <div className="p-6 border-b border-white/10">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold text-white">Journal Insights</h1>
-                    <p className="text-gray-300 mt-1">Track and analyze your journaling journey</p>
-                  </div>
-                  <div className="flex gap-2 bg-white/10 rounded-full p-1 backdrop-blur-md">
-                    {timeFrames.map((timeFrame) => (
-                      <button
-                        key={timeFrame}
-                        onClick={() => setSelectedTimeFrame(timeFrame)}
-                        className={`px-4 py-1.5 rounded-full text-sm transition-colors ${
-                          selectedTimeFrame === timeFrame
-                            ? "bg-white/10 text-white"
-                            : "text-gray-400 hover:text-white"
-                        }`}
-                      >
-                        {timeFrame}
-                      </button>
-                    ))}
+                    <h1 className="text-3xl font-bold text-white">Journal Dashboard</h1>
+                    <p className="text-gray-300 mt-1">Visualize your monthly mood patterns</p>
                   </div>
                 </div>
               </div>
@@ -186,30 +394,33 @@ export default function Dashboard() {
               <div className="p-6 space-y-6">
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* All-Time Entries Card - Moved to first position */}
                   <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-white/10 rounded-xl">
                         <Book className="w-6 h-6 text-gray-300" />
                       </div>
                       <div>
-                        <p className="text-lg text-gray-300 font-medium">Total Entries</p>
-                        <p className="text-3xl font-bold text-white mt-1">{stats.totalEntries}</p>
+                        <p className="text-lg text-gray-300 font-medium">All-Time Entries</p>
+                        <p className="text-3xl font-bold text-white mt-1">{allTimeEntryCount}</p>
                       </div>
                     </div>
                   </div>
 
+                  {/* Entries This Month Card - Moved to second position & adjusted for width */}
                   <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-white/10 rounded-xl">
-                        <Hash className="w-6 h-6 text-gray-300" />
+                        <CalendarIconUI className="w-6 h-6 text-gray-300" />
                       </div>
-                      <div>
-                        <p className="text-lg text-gray-300 font-medium">Used Tags</p>
-                        <p className="text-3xl font-bold text-white mt-1">{stats.uniqueTags}</p>
+                      <div className="flex-shrink min-w-0"> {/* Added flex-shrink and min-w-0 here */}
+                        <p className="text-lg text-gray-300 font-medium truncate">Month's Entries</p>
+                        <p className="text-3xl font-bold text-white mt-1">{stats.entriesThisMonth}</p>
                       </div>
                     </div>
                   </div>
 
+                  {/* Average Mood Card - Remains in third position */}
                   <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-white/10 rounded-xl">
@@ -217,96 +428,99 @@ export default function Dashboard() {
                       </div>
                       <div>
                         <p className="text-lg text-gray-300 font-medium">Average Mood</p>
-                        <p className="text-3xl font-bold text-white mt-1">{stats.averageMood}</p>
+                        <p className="text-3xl font-bold text-white mt-1">{stats.averageMoodForDisplay}/10</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Mood Trends and Activity */}
+                {/* Mood Trends and Activity -> Changed to Monthly Mood Calendar */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Mood Trends */}
-                  <div className="lg:col-span-2 bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
-                    <div className="flex items-center justify-between mb-8">
+                  {/* Monthly Mood Calendar */}
+                  <div className="lg:col-span-3 bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10"> {/* Changed to lg:col-span-3 */}
+                    <div className="flex items-center justify-between mb-6">
                       <div>
-                        <h2 className="text-xl font-bold text-white">Mood Trends</h2>
-                        <p className="text-gray-300 mt-1">Your emotional journey over time</p>
+                        <h2 className="text-xl font-bold text-white">Monthly Mood Calendar</h2>
+                        <p className="text-gray-300 mt-1">Click a day to see entries (future enhancement)</p>
                       </div>
-                      <div className="flex items-center gap-2 text-sm bg-white/10 px-3 py-1.5 rounded-full">
-                        <TrendingUp className="w-4 h-4 text-gray-300" />
-                        <span className="text-gray-300">Average Mood</span>
+                      <div className="flex items-center gap-2">
+                        <Palette className="w-5 h-5 text-gray-400" />
+                        <Select 
+                          value={selectedMoodColors.name} 
+                          onValueChange={handleGradientChange}
+                        >
+                          <SelectTrigger className="w-[200px] h-9 text-xs bg-black/20 border-white/10">
+                            <SelectValue placeholder="Select Gradient" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {gradientOptions.map(gradient => (
+                              <SelectItem key={gradient.name} value={gradient.name} className="text-xs">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex -space-x-1 overflow-hidden">
+                                    <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: gradient.low }} />
+                                    <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: gradient.high }} />
+                                  </div>
+                                  {gradient.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                    <div className="h-[300px] flex items-end justify-between gap-2">
-                      {moodBars.map((bar, index) => (
-                        <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                          <div
-                            className="w-full bg-white/10 rounded-lg transition-all duration-500 relative group hover:bg-white/20"
-                            style={{ height: `${bar.value}%` }}
-                          >
-                            <div
-                              className="w-full bg-white/20 rounded-t-lg transition-all duration-500 absolute top-0"
-                              style={{ height: '2px' }}
-                            />
-                          </div>
-                          <span className="text-sm text-gray-300 font-medium">{bar.label}</span>
-                        </div>
-                      ))}
-                    </div>
+                    {loading ? (
+                      <div className="h-[350px] flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-white" />
+                      </div>
+                    ) : (
+                      <Calendar
+                        mode="single"
+                        selected={currentDisplayMonth} // Technically not "selected", but used to control display
+                        onMonthChange={handleMonthChange}
+                        month={currentDisplayMonth}
+                        components={{ Day: CustomDay }}
+                        className="p-0 [&_button[name='previous-month']]:ml-2 [&_button[name='next-month']]:mr-2"
+                        classNames={{
+                          months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                          month: "space-y-3 w-full", // Ensure calendar takes full width
+                          caption: "flex justify-center relative items-center h-12", // Increased height for caption
+                          caption_label: "text-lg font-medium text-white", // Larger caption label
+                          nav: "space-x-1 flex items-center",
+                          nav_button: "h-8 w-8 bg-black/20 hover:bg-black/40 p-0 opacity-75 hover:opacity-100 transition-opacity rounded-lg",
+                          table: "w-full border-collapse space-y-1.5", // Increased space-y
+                          head_row: "flex justify-around",
+                          head_cell: "text-zinc-400 w-12 font-normal text-sm py-2", // Increased w and text size
+                          row: "flex w-full mt-1.5 justify-around", // Increased mt
+                          cell: "h-16 w-full max-w-[calc(100%/7-8px)] text-center text-sm p-0 relative [&:has([aria-selected])]:bg-yellow-500/10 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                          day: "h-full w-full p-0 font-normal focus:outline-none hover:bg-white/5 transition-colors rounded-md",
+                          day_selected: "bg-yellow-500 text-black hover:bg-yellow-400 hover:text-black focus:bg-yellow-500 focus:text-black",
+                          day_today: "ring-2 ring-yellow-500/50 rounded-md",
+                          day_outside: "text-zinc-500 opacity-50",
+                          day_disabled: "text-zinc-500 opacity-50",
+                        }}
+                      />
+                    )}
                   </div>
 
-                  {/* Recent Activity */}
-                  <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
-                    <h2 className="text-xl font-bold text-white mb-6">Recent Activity</h2>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 p-4 bg-white/10 rounded-xl hover:bg-white/20 transition-colors">
-                        <Clock className="w-5 h-5 text-gray-300" />
-                        <div>
-                          <p className="text-sm font-medium text-white">New entry added</p>
-                          <p className="text-xs text-gray-400 mt-0.5">2 hours ago</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-4 bg-white/10 rounded-xl hover:bg-white/20 transition-colors">
-                        <Hash className="w-5 h-5 text-gray-300" />
-                        <div>
-                          <p className="text-sm font-medium text-white">New tag created: "reflection"</p>
-                          <p className="text-xs text-gray-400 mt-0.5">Yesterday</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-4 bg-white/10 rounded-xl hover:bg-white/20 transition-colors">
-                        <BarChart3 className="w-5 h-5 text-gray-300" />
-                        <div>
-                          <p className="text-sm font-medium text-white">Mood trend improving</p>
-                          <p className="text-xs text-gray-400 mt-0.5">This week</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-4 bg-white/10 rounded-xl hover:bg-white/20 transition-colors">
-                        <Calendar className="w-5 h-5 text-gray-300" />
-                        <div>
-                          <p className="text-sm font-medium text-white">Consistent journaling streak</p>
-                          <p className="text-xs text-gray-400 mt-0.5">5 days in a row</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Recent Activity - REMOVED */}
                 </div>
 
-                {/* Recent Entries */}
+                {/* Recent Entries - This section will be removed or re-thought. For now, I'll keep the structure but comment out the mapping part */}
                 <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
                   <h2 className="text-xl font-bold text-white mb-6">Recent Entries</h2>
-                  {loading ? (
+                  {loadingRecentEntries && !recentEntries.length ? (
                     <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+                      <Loader2 className="w-6 h-6 animate-spin text-white mx-auto" />
                     </div>
-                  ) : entries.length > 0 ? (
-                    <div className="space-y-4">
-                      {entries.map((entry) => (
+                  ) : recentEntries.length > 0 ? (
+                    <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+            {recentEntries.map((entry) => (
                         <div key={entry.id} className="bg-black/20 rounded-lg p-4 hover:bg-black/30 transition-colors">
                           <div className="flex items-start justify-between">
                             <div>
                               <h3 className="font-medium text-white">{entry.title}</h3>
                               <p className="text-sm text-gray-400 mt-1">
-                                {format(new Date(entry.created_at), 'MMMM d, yyyy')}
+                                {format(new Date(entry.date), 'MMMM d, yyyy')}
                               </p>
                             </div>
                             <span className="text-2xl">
@@ -327,19 +541,61 @@ export default function Dashboard() {
                                 </p>
                               )}
                               {entry.positive_affirmation && (
-                                <p className="text-sm text-gray-200 mt-1">
-                                  <span className="font-semibold">Affirmation:</span> {entry.positive_affirmation}
-                                </p>
+                                <div className="mt-1">
+                                  <span className="font-semibold text-sm text-gray-200">Affirmations:</span>
+                                  {(() => {
+                                    let affirmationsToDisplay: { text: string; based_on?: string }[] = [];
+                                    if (typeof entry.positive_affirmation === 'string') {
+                                      try {
+                                        const parsed = JSON.parse(entry.positive_affirmation);
+                                        if (Array.isArray(parsed)) {
+                                          affirmationsToDisplay = parsed.filter(item => typeof item === 'object' && item !== null && 'text' in item);
+                                        } else if (entry.positive_affirmation && entry.positive_affirmation !== "Could not generate affirmations.") {
+                                          // If it's a string but not the error message, display as single affirmation
+                                          return <p className="text-sm text-gray-300 ml-2">- {entry.positive_affirmation}</p>;
+                                        }
+                                      } catch (e) {
+                                        // If JSON.parse fails, and it's not the error string, treat as single old affirmation
+                                        if (entry.positive_affirmation && entry.positive_affirmation !== "Could not generate affirmations.") {
+                                          return <p className="text-sm text-gray-300 ml-2">- {entry.positive_affirmation}</p>;
+                                        }
+                                      }
+                                    } else if (Array.isArray(entry.positive_affirmation)) {
+                                      affirmationsToDisplay = entry.positive_affirmation.filter(item => typeof item === 'object' && item !== null && 'text' in item);
+                                    }
+
+                                    if (affirmationsToDisplay.length > 0) {
+                                      return (
+                                        <ul className="list-disc list-inside ml-2 space-y-1">
+                                          {affirmationsToDisplay.map((aff, index) => (
+                                            <li key={index} className="text-sm text-gray-300">
+                                              {aff.text}
+                                              {aff.based_on && aff.based_on !== "N/A" && (
+                                                <span className="text-xs text-gray-400 italic"> (Based on: "{aff.based_on}")</span>
+                                              )}
+              </li>
+            ))}
+          </ul>
+                                      );
+                                    } else if (entry.ai_summary && entry.ai_summary !== "Could not generate summary." && entry.positive_affirmation === "Could not generate affirmations.") {
+                                       return <p className="text-sm text-gray-400 ml-2">The AI analyzed this entry but couldn't find enough information to generate affirmations.</p>;
+                                    } else if (entry.positive_affirmation) {
+                                       // Fallback for any other string case, including "Could not generate affirmations."
+                                       return <p className="text-sm text-gray-400 ml-2">{entry.positive_affirmation || "No affirmations available."}</p>;
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
                               )}
                             </div>
                           )}
 
-                          {/* AI Generation Button */}
-                          {(!entry.ai_summary || !entry.positive_affirmation) && (
+                          {/* AI Generation Button - Conditionally render if summary OR affirmation is missing */}
+                          {(!entry.ai_summary || entry.ai_summary === "Could not generate summary." || !entry.positive_affirmation || entry.positive_affirmation === "Could not generate affirmations." || (Array.isArray(entry.positive_affirmation) && entry.positive_affirmation.length === 0) ) && (
                             <div className="mt-4 text-right">
                               <Button
                                 onClick={() => handleGenerateAi(entry.id)}
-                                disabled={generatingAi !== null} // Disable if any entry is generating
+                                disabled={generatingAi === entry.id || generatingAi !== null}
                                 size="sm"
                                 className="bg-white/10 hover:bg-white/20 text-white"
                               >
@@ -372,18 +628,23 @@ export default function Dashboard() {
                           )}
         </div>
                       ))}
-                      {hasMore && (
+                      {hasMoreRecentEntries && (
                         <button
-                          onClick={loadMore}
-                          className="w-full mt-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-white"
+                          onClick={loadMoreRecentEntries}
+                          disabled={loadingRecentEntries}
+                          className="w-full mt-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-white disabled:opacity-50"
                         >
-                          Load More
+                          {loadingRecentEntries ? (
+                            <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                          ) : (
+                            "Load More Recent Entries"
+                          )}
                         </button>
           )}
         </div>
                   ) : (
                     <div className="text-center py-8 text-gray-400">
-                      No entries yet. Start your journaling journey today!
+                      No recent entries found.
                     </div>
                   )}
         </div>

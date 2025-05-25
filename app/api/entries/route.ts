@@ -2,7 +2,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-// GET all entries for the authenticated user
+// GET all entries for the authenticated user, optionally filtered by date range
 export async function GET(request: Request) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
@@ -10,6 +10,8 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const offset = (page - 1) * limit
+    const startDate = searchParams.get('startDate') // New: For date range
+    const endDate = searchParams.get('endDate')     // New: For date range
 
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -17,13 +19,26 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get entries with pagination
-    const { data: entries, error, count } = await supabase
+    // Build the query
+    let queryBuilder = supabase
       .from('entries')
       .select('*', { count: 'exact' })
       .eq('user_id', user.id)
+
+    // Apply date filters if they exist
+    if (startDate) {
+      queryBuilder = queryBuilder.gte('date', startDate)
+    }
+    if (endDate) {
+      queryBuilder = queryBuilder.lte('date', endDate)
+    }
+
+    // Apply ordering and pagination
+    queryBuilder = queryBuilder
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
+    
+    const { data: entries, error, count } = await queryBuilder;
 
     if (error) throw error
 
