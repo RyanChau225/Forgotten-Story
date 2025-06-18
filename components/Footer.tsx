@@ -22,12 +22,8 @@ export default function Footer() {
               About
             </Link>
             <div className="h-3 w-px bg-white/10" />
-            <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors text-xs">
-              Privacy
-            </Link>
-            <div className="h-3 w-px bg-white/10" />
-            <Link href="/terms" className="text-gray-400 hover:text-white transition-colors text-xs">
-              Terms
+            <Link href="mailto:feedback@forgotten-story.com" className="text-gray-400 hover:text-white transition-colors text-xs">
+              Feedback
             </Link>
             <div className="h-3 w-px bg-white/10" />
             <Link 

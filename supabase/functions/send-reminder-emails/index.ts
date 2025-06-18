@@ -33,6 +33,7 @@ interface Entry {
   title: string
   content: string
   date: string
+  mood: number // Assuming mood is a number from 1-10
   ai_summary?: string
   positive_affirmation?: string | Array<{ text: string; based_on?: string }>
   image_urls?: string[]
@@ -106,7 +107,7 @@ serve(async (req) => {
         let { data: entries, error: entriesError } = await supabase
           .from("entries")
           // Select new fields for AI content and images
-          .select("id, title, content, date, ai_summary, positive_affirmation, image_urls") 
+          .select("id, title, content, date, mood, ai_summary, positive_affirmation, image_urls") 
           .eq("user_id", user.id)
           // .order("date", { ascending: false }) // Maybe order by random()? Check Supabase docs
           .limit(100) // Fetch more to increase randomness if needed
@@ -204,10 +205,35 @@ serve(async (req) => {
           // --- End AI Content Generation ---
 
           // --- Email Formatting ---
+          
+          // Mood mapping (assuming 1-10 scale) - Adjust emojis and descriptions as needed
+          const moodMap: {[key: number]: { emoji: string, description: string }} = {
+            1: { emoji: "😭", description: "Overwhelmed" },
+            2: { emoji: "😢", description: "Very Sad" },
+            3: { emoji: "😔", description: "Sad" },
+            4: { emoji: "🙁", description: "Slightly Down" },
+            5: { emoji: "😐", description: "Neutral" },
+            6: { emoji: "🙂", description: "Okay" },
+            7: { emoji: "😊", description: "Happy" },
+            8: { emoji: "😄", description: "Very Happy" },
+            9: { emoji: "🥳", description: "Ecstatic" },
+            10: { emoji: "🤩", description: "Blissful" }
+          };
+          const currentMood = randomEntry.mood && moodMap[randomEntry.mood] ? moodMap[randomEntry.mood] : { emoji: "❓", description: "Unknown" };
+
+          let moodHtml = "";
+          if (randomEntry.mood) { // Check if mood data exists
+            moodHtml = `
+              <div style="margin-bottom: 15px; padding: 10px; background-color: #f0f0f0; border-radius: 4px; text-align: center;">
+                <span style="font-size: 24px; margin-right: 8px;">${currentMood.emoji}</span>
+                <span style="color: #555; font-weight: bold;">Mood: ${currentMood.description}</span>
+              </div>`;
+          }
+
           let affirmationsHtml = "";
           if (affirmationsForEmail.length > 0) {
             affirmationsHtml = `
-              <h3 style="color: #444; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Positive Affirmations</h3>
+              <h3 style="color: #444; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">✨ Positive Affirmations</h3>
               <ul style="list-style-type: none; padding-left: 0; color: #555;">`;
             affirmationsForEmail.forEach(aff => {
               affirmationsHtml += `
@@ -218,9 +244,8 @@ serve(async (req) => {
             });
             affirmationsHtml += `</ul>`;
           } else if (typeof randomEntry.positive_affirmation === 'string' && randomEntry.positive_affirmation && randomEntry.positive_affirmation !== "Could not generate affirmations.") {
-            // Handle case where positive_affirmation is a simple string (old format or non-array AI response)
             affirmationsHtml = `
-              <h3 style="color: #444; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Positive Affirmation</h3>
+              <h3 style="color: #444; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">✨ Positive Affirmation</h3>
               <div style="background-color: #f0f0f0; padding: 8px; border-radius: 3px; color: #555;">
                 <p style="margin: 0;">${randomEntry.positive_affirmation}</p>
               </div>`;
@@ -231,7 +256,7 @@ serve(async (req) => {
 
           let imagesHtml = "";
           if (randomEntry.image_urls && randomEntry.image_urls.length > 0) {
-            imagesHtml = `<h3 style="color: #444; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Images</h3><div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
+            imagesHtml = `<h3 style="color: #444; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">🖼️ Images</h3><div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
             randomEntry.image_urls.forEach(url => {
               imagesHtml += `<div style="width: 150px; height: 150px; overflow: hidden; border-radius: 4px; border: 1px solid #ddd;"><img src="${url}" alt="Entry Image" style="width: 100%; height: 100%; object-fit: cover;" /></div>`;
             });
@@ -242,56 +267,20 @@ serve(async (req) => {
           // Send email using the send-email function
           console.log(`Invoking send-email for user ${user.id} with entry ${randomEntry.id}`);
 
-          const intrigueLines = [
-            "Unlock a Hidden Memory...",
-            "A Glimpse From Your Past Awaits...",
-            "Remember This Moment?",
-            "Journey Back to a Day in Your Life...",
-            "Your Story Continues: A Look Back...",
-            "From the Pages of Your Past...",
-            "A Whisper from Your Journal...",
-            "Revisit a Chapter of Your Life...",
-            "A Moment Frozen in Time, Just For You...",
-            "Rediscover a Piece of Your Story...",
-            "A Moment from Your Archives...",
-            "Step Back in Time With Forgotten Story...",
-            "Your Personal Time Capsule Has a Message...",
-            "Echoes from Your Journal...",
-            "Once Upon a Time, You Wrote...",
-            "A Page from Your Life's Book...",
-            "Uncover a Past Reflection...",
-            "Travel Back to This Day...",
-            "Your Memories are Calling...",
-            "A Flashback from Your Forgotten Story...",
-            "Revisit Your Thoughts and Feelings...",
-            "Another Chapter from Your Journey...",
-            "A Little Reminder from Your Past Self...",
-            "Let's See What You Were Up To...",
-            "The Story of You Continues to Unfold...",
-            "A Snapshot of Your Past Experience...",
-            "Dive Back Into a Memory...",
-            "What Was on Your Mind This Day?",
-            "Your Journal Has Something to Share...",
-            "A Cherished Moment, Revisited..."
-          ];
-          const randomIntrigue = intrigueLines[Math.floor(Math.random() * intrigueLines.length)];
-
           // Shorter teaser for the subject line, ensuring it doesn't break words awkwardly if possible
           let subjectTeaser = entrySummaryForSubject;
-          if (subjectTeaser.length > 40) {
-            const lastSpace = subjectTeaser.substring(0, 40).lastIndexOf(' ');
-            subjectTeaser = lastSpace > 0 ? subjectTeaser.substring(0, lastSpace) + "..." : subjectTeaser.substring(0, 37) + "...";
-          }
 
-          const emailSubject = `${randomIntrigue} | ${subjectTeaser}`;
+          const emailSubject = subjectTeaser; // Use only the teaser for the subject
           
           const emailHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 5px;">
-              <h2 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">${randomEntry.title}</h2>
+              <h2 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">🏷️ Title: ${randomEntry.title}</h2>
+              
+              ${moodHtml}
               
               ${affirmationsHtml}
 
-              <h3 style="color: #444; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Your Journal Entry</h3>
+              <h3 style="color: #444; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">📖 Your Journal Entry</h3>
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
                 <p style="color: #555; white-space: pre-wrap; line-height: 1.6;">${randomEntry.content}</p>
                 <p style="color: #888; font-size: 0.9em; margin-top: 15px;">Written on: ${new Date(randomEntry.date).toLocaleDateString()}</p>

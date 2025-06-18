@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
@@ -25,6 +25,7 @@ export default function Navigation() {
   const [isCreatingEntry, setIsCreatingEntry] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const supabase = createClientComponentClient()
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const getUser = async () => {
@@ -39,6 +40,22 @@ export default function Navigation() {
 
     return () => subscription.unsubscribe()
   }, [supabase.auth])
+
+  // Click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMobileMenu(false)
+      }
+    }
+
+    if (showMobileMenu) {
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside)
+      }
+    }
+  }, [showMobileMenu])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -55,7 +72,7 @@ export default function Navigation() {
   ]
 
   return (
-    <nav className="fixed w-full z-50 bg-black/50 backdrop-blur-xl border-b border-white/10">
+    <nav className="fixed w-full z-50 bg-black/50 backdrop-blur-xl border-b border-white/10" ref={menuRef}>
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Left: Logo and Home */}
@@ -144,34 +161,46 @@ export default function Navigation() {
 
       {/* Mobile menu */}
       {showMobileMenu && (
-        <div className="md:hidden border-t border-white/10">
-          <div className="container mx-auto px-4 py-4 space-y-4">
+        <div className="md:hidden border-t border-white/10 bg-black/50 backdrop-blur-xl">
+          <div className="container mx-auto px-4 py-4 space-y-1">
             {user && (
               <>
-                <div className="flex justify-center">
+                <div className="flex justify-center pb-3">
                   <Link
                     href="/new-entry"
                     className="bg-yellow-500 text-black hover:bg-yellow-400 px-4 py-2 rounded-xl flex items-center space-x-2 transition-all duration-200 w-full justify-center"
+                    onClick={() => setShowMobileMenu(false)}
                   >
                     <Plus className="w-4 h-4" />
                     <span>New Entry</span>
                   </Link>
                 </div>
-                {navItems.filter(item => !item.public).map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="block text-center text-sm text-gray-400 hover:text-white transition-colors py-2"
+                <div className="border-t border-white/10 pt-3">
+                  {navItems.filter(item => !item.public).map((item, index) => (
+                    <div key={item.name}>
+                      <Link
+                        href={item.href}
+                        className="block text-center text-gray-300 hover:text-white transition-colors py-3"
+                        onClick={() => setShowMobileMenu(false)}
+                      >
+                        {item.name}
+                      </Link>
+                      {index < navItems.filter(item => !item.public).length - 1 && (
+                        <div className="border-t border-white/5 mx-6" />
+                      )}
+                    </div>
+                  ))}
+                  <div className="border-t border-white/5 mx-6" />
+                  <button
+                    onClick={() => {
+                      handleSignOut()
+                      setShowMobileMenu(false)
+                    }}
+                    className="w-full text-center text-gray-300 hover:text-white transition-colors py-3"
                   >
-                    {item.name}
-                  </Link>
-                ))}
-                <button
-                  onClick={handleSignOut}
-                  className="w-full text-center text-sm text-gray-400 hover:text-white transition-colors py-2"
-                >
-                  Sign Out
-                </button>
+                    Sign Out
+                  </button>
+                </div>
               </>
             )}
           </div>

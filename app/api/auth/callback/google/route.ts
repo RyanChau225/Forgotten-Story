@@ -26,10 +26,21 @@ export async function GET(request: Request) {
         try {
           const stateObj = JSON.parse(decodeURIComponent(state))
           if (stateObj.redirectedFrom) {
-            redirectTo = stateObj.redirectedFrom
+            const potentialRedirect = stateObj.redirectedFrom;
+            // Validate the redirect path
+            if (typeof potentialRedirect === 'string' && 
+                potentialRedirect.startsWith('/') && 
+                !potentialRedirect.startsWith('//') && 
+                !potentialRedirect.startsWith('/\\')) { // Disallow /\ too, just in case
+              redirectTo = potentialRedirect;
+            } else {
+              console.warn('Invalid redirectedFrom in state, using default dashboard path. Path was:', potentialRedirect);
+              // redirectTo remains '/dashboard' (the default)
+            }
           }
         } catch (e) {
           console.error('Error parsing state:', e)
+          // redirectTo remains '/dashboard' (the default)
         }
       }
 

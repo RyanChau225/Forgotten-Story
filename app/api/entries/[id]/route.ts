@@ -1,6 +1,12 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
+// Define Zod schema for route parameters
+const ParamsSchema = z.object({
+  id: z.string().uuid("Invalid entry ID format"), // Assuming UUIDs. Adjust if using CUIDs or integer IDs.
+})
 
 export async function GET(
   request: Request,
@@ -8,17 +14,21 @@ export async function GET(
 ) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
-    const entryId = params.id
+    
+    // Validate route parameters
+    const paramsValidation = ParamsSchema.safeParse(params)
+    if (!paramsValidation.success) {
+      return NextResponse.json(
+        { error: "Invalid entry ID format", details: paramsValidation.error.flatten() }, 
+        { status: 400 }
+      )
+    }
+    const entryId = paramsValidation.data.id
 
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Validate entry ID
-    if (!entryId) {
-      return NextResponse.json({ error: 'Entry ID is required' }, { status: 400 })
     }
 
     // Fetch the entry

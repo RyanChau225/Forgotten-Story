@@ -1,6 +1,12 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+
+// Define Zod schema for the request payload
+const GenerateAiSchema = z.object({
+  entryId: z.string().uuid("Invalid entry ID format"), // Assuming UUIDs. Adjust if different.
+});
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -15,10 +21,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { entryId } = await request.json();
-    if (!entryId) {
-      return NextResponse.json({ error: 'entryId is required' }, { status: 400 });
+    const payload = await request.json();
+    
+    // Validate payload with Zod
+    const validationResult = GenerateAiSchema.safeParse(payload);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: validationResult.error.flatten() }, 
+        { status: 400 }
+      );
     }
+    const { entryId } = validationResult.data;
 
     // 1. Fetch the specific entry ensuring it belongs to the user
     const { data: entry, error: fetchError } = await supabase

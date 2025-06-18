@@ -348,19 +348,30 @@ export default function Dashboard() {
     averageMoodForDisplay: entries.length > 0 ? parseFloat(averageMoodForStat.toFixed(1)) : 0
   }
 
-  // Custom Day component for the calendar
-  const CustomDay = ({ date, displayMonth }: { date: Date; displayMonth: Date }) => {
+  // Custom DayButton component for the calendar
+  const CustomDayButton = (props: any) => {
+    const date = props.day?.date;
+    const displayMonth = currentDisplayMonth;
+    
+    // If date is invalid, return default behavior
+    if (!(date instanceof Date && !isNaN(date.getTime()))) {
+      return <span>{props.children}</span>;
+    }
+    
     const dayKey = format(date, "yyyy-MM-dd");
     const moodData = monthlyMoods[dayKey];
     const isCurrentMonth = date.getMonth() === displayMonth.getMonth();
+    const isToday = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+    
     let dayStyle = {};
     let moodEmoji = "";
+    let hasEntries = false;
 
     if (moodData?.averageMood !== undefined && isCurrentMonth) {
+      hasEntries = true;
       dayStyle = { 
         backgroundColor: moodData.color,
-        color: moodData.averageMood > 6 ? '#000' : '#FFF', // Adjusted text color threshold for 1-10 scale
-        borderRadius: '0.375rem', // Same as rounded-md
+        color: moodData.averageMood > 6 ? '#000' : '#FFF',
       };
       const mood = moodData.averageMood;
       if (mood !== undefined) {
@@ -368,36 +379,58 @@ export default function Dashboard() {
       }
     }
 
-    const handleDateClick = () => {
-      if (!isCurrentMonth) return; // Only allow clicking days in the current month
+    const handleDateClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (!isCurrentMonth) return;
       const formattedDate = format(date, "yyyy-MM-dd");
       router.push(`/search?date=${formattedDate}`);
     };
 
     return (
       <button
+        {...props}
         type="button"
         onClick={handleDateClick}
-        disabled={!isCurrentMonth} // Disable clicking for days outside the current month
+        disabled={!isCurrentMonth}
         style={dayStyle}
         className={cn(
-          "w-full h-full flex flex-col items-center justify-center p-1 text-xs relative focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:z-10",
-          !isCurrentMonth && "text-gray-500 opacity-50 cursor-not-allowed",
-          isCurrentMonth && "hover:bg-white/10 transition-colors", // Added hover effect for current month days
-          dayStyle.backgroundColor && isCurrentMonth && "hover:opacity-80" // Slightly dim color on hover if it has a mood color
+          props.className,
+          "relative w-full h-full min-h-[48px] flex flex-col items-center justify-center text-sm font-medium transition-all duration-200 rounded-lg border",
+          // Base styling
+          isCurrentMonth ? "text-white" : "text-zinc-600",
+          // Border styling
+          isToday ? "border-yellow-400/60 shadow-lg shadow-yellow-400/20" : "border-transparent",
+          // Background and hover states
+          !hasEntries && isCurrentMonth && "hover:bg-white/10 active:bg-white/15",
+          hasEntries && isCurrentMonth && "hover:brightness-110 active:scale-95",
+          !isCurrentMonth && "cursor-not-allowed opacity-40",
+          // Focus states
+          "focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 focus:ring-offset-transparent"
         )}
-        aria-label={`Search entries for ${format(date, "MMMM d, yyyy")}`}
+        aria-label={`${hasEntries ? 'View' : 'Search'} entries for ${format(date, "MMMM d, yyyy")}`}
       >
-        <span>{format(date, "d")}</span>
-        {moodEmoji && <span className="text-sm mt-0.5">{moodEmoji}</span>}
+        <span className={cn("leading-none", hasEntries && "mb-1")}>
+          {format(date, "d")}
+        </span>
+        {moodEmoji && (
+          <span className="text-xs leading-none opacity-90">
+            {moodEmoji}
+          </span>
+        )}
         {moodData && moodData.entriesCount > 1 && isCurrentMonth && (
-          <span className="absolute bottom-0.5 right-0.5 text-[8px] bg-black/30 text-white px-0.5 rounded-full">
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] text-[10px] bg-yellow-500 text-black font-bold rounded-full flex items-center justify-center shadow-lg">
             {moodData.entriesCount}
           </span>
+        )}
+        {hasEntries && isCurrentMonth && (
+          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-current rounded-full opacity-60" />
         )}
         </button>
     );
   };
+
+  // Log currentDisplayMonth before rendering Calendar
+  // console.log("[DashboardPage] Rendering Calendar with currentDisplayMonth:", currentDisplayMonth, "Is valid Date object:", currentDisplayMonth instanceof Date && !isNaN(currentDisplayMonth.getTime()));
 
   return (
     <div className="min-h-screen w-full bg-[url('/mountains.jpg')] bg-cover bg-center">
@@ -498,32 +531,35 @@ export default function Dashboard() {
                         <Loader2 className="w-8 h-8 animate-spin text-white" />
                       </div>
                     ) : (
+                      <div className="w-full [&_table]:grid [&_table]:grid-cols-7 [&_table]:gap-2 [&_thead]:contents [&_tbody]:contents [&_tr]:contents">
                       <Calendar
                         mode="single"
-                        selected={currentDisplayMonth} // Technically not "selected", but used to control display
                         onMonthChange={handleMonthChange}
                         month={currentDisplayMonth}
-                        components={{ Day: CustomDay }}
-                        className="p-0 [&_button[name='previous-month']]:ml-2 [&_button[name='next-month']]:mr-2"
+                          components={{ DayButton: CustomDayButton }}
+                          className="w-full p-0 bg-transparent border-0"
                         classNames={{
-                          months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                          month: "space-y-3 w-full", // Ensure calendar takes full width
-                          caption: "flex justify-center relative items-center h-12", // Increased height for caption
-                          caption_label: "text-lg font-medium text-white", // Larger caption label
+                            months: "w-full",
+                            month: "space-y-4 w-full",
+                            caption: "flex justify-center relative items-center h-16 mb-4",
+                            caption_label: "hidden",
                           nav: "space-x-1 flex items-center",
-                          nav_button: "h-8 w-8 bg-black/20 hover:bg-black/40 p-0 opacity-75 hover:opacity-100 transition-opacity rounded-lg",
-                          table: "w-full border-collapse space-y-1.5", // Increased space-y
-                          head_row: "flex justify-around",
-                          head_cell: "text-zinc-400 w-12 font-normal text-sm py-2", // Increased w and text size
-                          row: "flex w-full mt-1.5 justify-around", // Increased mt
-                          cell: "h-16 w-full max-w-[calc(100%/7-8px)] text-center text-sm p-0 relative [&:has([aria-selected])]:bg-yellow-500/10 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                          day: "h-full w-full p-0 font-normal focus:outline-none hover:bg-white/5 transition-colors rounded-md",
-                          day_selected: "bg-yellow-500 text-black hover:bg-yellow-400 hover:text-black focus:bg-yellow-500 focus:text-black",
-                          day_today: "ring-2 ring-yellow-500/50 rounded-md",
-                          day_outside: "text-zinc-500 opacity-50",
-                          day_disabled: "text-zinc-500 opacity-50",
+                            nav_button: "h-10 w-10 bg-white/10 hover:bg-white/20 p-0 opacity-75 hover:opacity-100 transition-all rounded-lg border border-white/10 flex items-center justify-center",
+                            nav_button_previous: "absolute left-2",
+                            nav_button_next: "absolute right-2",
+                            table: "w-full",
+                            head_row: "",
+                            head_cell: "text-zinc-300 font-medium text-center py-2 text-sm uppercase tracking-wide min-h-[40px] flex items-center justify-center",
+                            row: "",
+                            cell: "relative aspect-square",
+                            day: "w-full h-full p-0 font-normal focus:outline-none transition-all rounded-lg",
+                            day_selected: "bg-yellow-500 text-black hover:bg-yellow-400",
+                            day_today: "ring-2 ring-yellow-400/50 ring-inset",
+                            day_outside: "text-zinc-600 opacity-40",
+                            day_disabled: "text-zinc-600 opacity-40",
                         }}
                       />
+                      </div>
                     )}
                   </div>
 
@@ -539,7 +575,7 @@ export default function Dashboard() {
                     </div>
                   ) : recentEntries.length > 0 ? (
                     <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
-                      {recentEntries.map((entry) => (
+            {recentEntries.map((entry) => (
                         <Link key={entry.id} href={`/search?entryId=${entry.id}`} passHref className="block mb-4 last:mb-0">
                           <div className="block bg-black/20 rounded-lg p-4 hover:bg-black/30 transition-colors cursor-pointer">
                             <div className="flex items-start justify-between">
@@ -602,9 +638,9 @@ export default function Dashboard() {
                                                 {aff.based_on && aff.based_on !== "N/A" && (
                                                   <span className="text-xs text-gray-400 italic"> (Based on: "{aff.based_on}")</span>
                                                 )}
-                                              </li>
-                                            ))}
-                                          </ul>
+              </li>
+            ))}
+          </ul>
                                         );
                                       } else if (entry.ai_summary && entry.ai_summary !== "Could not generate summary." && entry.positive_affirmation === "Could not generate affirmations.") {
                                          return <p className="text-sm text-gray-400 ml-2">The AI analyzed this entry but couldn't find enough information to generate affirmations.</p>;
@@ -653,10 +689,10 @@ export default function Dashboard() {
                                     #{tag}
                                   </span>
                                 ))}
-                              </div>
-                            )}
-                          </div>
-                        </Link>
+        </div>
+          )}
+        </div>
+              </Link>
                       ))}
                       {hasMoreRecentEntries && (
                         <button
@@ -677,7 +713,7 @@ export default function Dashboard() {
                       No recent entries found.
                     </div>
                   )}
-                </div>
+        </div>
           </div>
         </div>
       </div>

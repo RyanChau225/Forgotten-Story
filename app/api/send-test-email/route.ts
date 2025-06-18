@@ -2,6 +2,17 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
+// Simple HTML escaping function
+function escapeHtml(unsafe: string | undefined | null): string {
+  if (unsafe === undefined || unsafe === null) return '';
+  return unsafe
+       .replace(/&/g, "&amp;")
+       .replace(/</g, "&lt;")
+       .replace(/>/g, "&gt;")
+       .replace(/"/g, "&quot;")
+       .replace(/'/g, "&#039;");
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
@@ -50,13 +61,13 @@ export async function POST(request: Request) {
         subject: "Your Random Journal Entry",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #333;">${randomEntry.title}</h1>
-            <p style="color: #666; white-space: pre-wrap;">${randomEntry.content}</p>
-            <p style="color: #999;">Written on: ${new Date(randomEntry.date).toLocaleDateString()}</p>
+            <h1 style="color: #333;">${escapeHtml(randomEntry.title)}</h1>
+            <p style="color: #666; white-space: pre-wrap;">${escapeHtml(randomEntry.content)}</p>
+            <p style="color: #999;">Written on: ${escapeHtml(new Date(randomEntry.date).toLocaleDateString())}</p>
             <hr style="border: 1px solid #eee; margin: 20px 0;" />
             <p style="color: #999; font-size: 0.9em;">
               This is a test email from your journal. You can manage your email preferences in your 
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL}/notifications" style="color: #f59e0b;">notification settings</a>.
+              <a href="${escapeHtml(process.env.NEXT_PUBLIC_SITE_URL)}/notifications" style="color: #f59e0b;">notification settings</a>.
             </p>
           </div>
         `

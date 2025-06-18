@@ -1,4 +1,15 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
+// Define Zod schema for extract-text input
+const ExtractTextSchema = z.object({
+  image: z.string()
+    .min(1, "image data is required")
+    .max(15 * 1024 * 1024, "Image data too large (max 15MB approx)"), // Approx 15MB for base64 string
+  mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "application/pdf"], {
+    errorMap: () => ({ message: "Invalid or unsupported mimeType. Supported: image/jpeg, image/png, image/webp, application/pdf" })
+  }),
+});
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -10,11 +21,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export async function POST(request: Request) {
   try {
-    const { image, mimeType } = await request.json(); // Assuming mimeType will now be sent from the client
+    const payload = await request.json();
 
-    if (!image) {
-      return NextResponse.json({ error: 'Missing image data' }, { status: 400 });
+    // Validate with Zod
+    const validationResult = ExtractTextSchema.safeParse(payload);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: validationResult.error.flatten() },
+        { status: 400 }
+      );
     }
+
+    const { image, mimeType } = validationResult.data;
+
     if (!mimeType) {
       // Attempt to infer mimeType if not provided, default to jpeg for robustness
       // This is a fallback, ideally the client should send it.
@@ -37,6 +56,12 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Error in /api/extract-text route:', error);
+    if (error instanceof z.ZodError) { 
+      return NextResponse.json(
+        { error: 'Invalid input', details: error.flatten() },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: error.message || 'Failed to process image via Gemini OCR' }, { status: 500 });
   }
 }

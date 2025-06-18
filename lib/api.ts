@@ -57,8 +57,8 @@ export async function searchEntries(query: string, filters?: {
 }) {
   const params = new URLSearchParams({
     query,
-    ...(filters?.startDate && { startDate: filters.startDate }),
-    ...(filters?.endDate && { endDate: filters.endDate }),
+    ...(filters?.startDate && { startDate: new Date(filters.startDate).toISOString() }),
+    ...(filters?.endDate && { endDate: new Date(filters.endDate).toISOString() }),
     ...(filters?.minMood !== undefined && { minMood: filters.minMood.toString() }),
     ...(filters?.maxMood !== undefined && { maxMood: filters.maxMood.toString() }),
     ...(filters?.hashtags && { hashtags: JSON.stringify(filters.hashtags) })
