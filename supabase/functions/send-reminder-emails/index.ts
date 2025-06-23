@@ -267,16 +267,61 @@ serve(async (req) => {
           // Send email using the send-email function
           console.log(`Invoking send-email for user ${user.id} with entry ${randomEntry.id}`);
 
-          // Shorter teaser for the subject line, ensuring it doesn't break words awkwardly if possible
-          let subjectTeaser = entrySummaryForSubject;
-
-          const emailSubject = subjectTeaser; // Use only the teaser for the subject
+          // Create a hook for the subject line
+          const hooks = [
+            "Remember when",
+            "Looking back at",
+            "Revisiting",
+            "A moment from your journey",
+            "Reflecting on",
+            "From your journal",
+            "A memory worth revisiting",
+            "Unlock a Hidden Memory",
+            "A Glimpse From Your Past Awaits",
+            "Remember This Moment?",
+            "Journey Back to a Day in Your Life",
+            "Your Story Continues: A Look Back",
+            "From the Pages of Your Past",
+            "A Whisper from Your Journal",
+            "Revisit a Chapter of Your Life",
+            "A Moment Frozen in Time, Just For You",
+            "Rediscover a Piece of Your Story",
+            "A Moment from Your Archives",
+            "Step Back in Time With Forgotten Story",
+            "Your Personal Time Capsule Has a Message",
+            "Echoes from Your Journal",
+            "Once Upon a Time, You Wrote",
+            "A Page from Your Life's Book",
+            "Uncover a Past Reflection",
+            "Travel Back to This Day",
+            "Your Memories are Calling",
+            "A Flashback from Your Forgotten Story",
+            "Revisit Your Thoughts and Feelings",
+            "Another Chapter from Your Journey",
+            "A Little Reminder from Your Past Self",
+            "Let's See What You Were Up To",
+            "The Story of You Continues to Unfold",
+            "A Snapshot of Your Past Experience",
+            "Dive Back Into a Memory",
+            "What Was on Your Mind This Day?",
+            "Your Journal Has Something to Share",
+            "A Cherished Moment, Revisited"
+          ];
+          const hook = hooks[Math.floor(Math.random() * hooks.length)];
+          const emailSubject = `${hook}: ${randomEntry.title}`;
           
           const emailHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 5px;">
               <h2 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">🏷️ Title: ${randomEntry.title}</h2>
               
               ${moodHtml}
+              
+              ${aiSummaryForEmail && aiSummaryForEmail !== "Summary could not be generated." && aiSummaryForEmail !== "Could not generate summary." ? `
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f5f5f5; border-radius: 4px; border-left: 4px solid #f59e0b;">
+                  <h3 style="color: #444; margin-top: 0; margin-bottom: 10px;">🤖 A.I. Summary:</h3>
+                  <p style="color: #555; margin: 0; line-height: 1.6;">${aiSummaryForEmail}</p>
+                </div>
+              ` : ''}
               
               ${affirmationsHtml}
 

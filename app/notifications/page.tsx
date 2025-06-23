@@ -188,7 +188,7 @@ export default function NotificationsPage() {
   return (
     <CenteredLayout>
       <div className="space-y-8">
-        <div>
+        <div className="bg-white/10 backdrop-blur-xl rounded-xl border border-white/10 p-6">
           <h1 className="text-2xl font-bold mb-2">Email Notifications</h1>
           <p className="text-gray-400">
             Receive random journal entries from your past via email

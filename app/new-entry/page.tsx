@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useRouter, useSearchParams } from "next/navigation"
-import { toast } from "sonner"
+import { toast as sonnerToast } from "sonner"
 import { format, parse, isValid, parseISO } from "date-fns"
 import { Slider } from "@/components/ui/slider"
 import { X, Copy, Camera, Upload, Clipboard, Calendar as CalendarIcon, Image as ImageIcon, Loader2, GripVertical, Type, FileText, Hash, ImageUp, ScanText, SmilePlus, CalendarDays } from "lucide-react"
@@ -45,7 +45,7 @@ export default function NewEntryPage() {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("Time: \nLocation: \n\n")
   const [mood, setMood] = useState(5)
-  const [date, setDate] = useState<Date | undefined>(new Date())
+  const [date, setDate] = useState<Date>(new Date())
   const [manualDateInput, setManualDateInput] = useState<string>(format(new Date(), "yyyy-MM-dd"))
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false)
   const [hashtags, setHashtags] = useState("")
@@ -95,7 +95,10 @@ export default function NewEntryPage() {
             });
           }
           
-          setHashtags(fetchedEntry.hashtags || [])
+          // Load tags into tagsList, not hashtags
+          if (fetchedEntry.hashtags && Array.isArray(fetchedEntry.hashtags)) {
+            setTagsList(fetchedEntry.hashtags)
+          }
           setImages(fetchedEntry.image_urls || [])
         } catch (error: any) {
           console.error("Error fetching entry:", error)
@@ -140,13 +143,12 @@ export default function NewEntryPage() {
     setLoading(true)
 
     const entryData = {
-      user_id: user.id,
       title,
       content,
       mood,
       date: date.toISOString(),
       is_private: true,
-      hashtags,
+      hashtags: tagsList,
       image_urls: images,
     }
 
@@ -196,7 +198,7 @@ export default function NewEntryPage() {
 
   const triggerOcrProcessing = async () => {
     if (!ocrFileForProcessing) {
-      toast.error("No image selected for text extraction.");
+      sonnerToast.error("No image selected for text extraction.");
       return;
     }
 
@@ -223,10 +225,10 @@ export default function NewEntryPage() {
       if (data.error) throw new Error(data.error);
 
       setExtractedText(data.text);
-      toast.success("Text extracted successfully!");
+      sonnerToast.success("Text extracted successfully!");
     } catch (error: any) {
       console.error('Error extracting OCR text:', error);
-      toast.error(error.message || "Failed to extract text from image");
+      sonnerToast.error(error.message || "Failed to extract text from image");
       setExtractedText("Error: Could not extract text."); // Provide feedback in text area
     } finally {
       setIsExtractingOcrText(false);
@@ -236,7 +238,7 @@ export default function NewEntryPage() {
   const handleCopyText = () => {
     if (extractedText) {
       navigator.clipboard.writeText(extractedText)
-      toast.success("Text copied to clipboard!")
+      sonnerToast.success("Text copied to clipboard!")
     }
   }
 
@@ -247,7 +249,7 @@ export default function NewEntryPage() {
         ? currentContent + '\n' + extractedText 
         : extractedText
       setContent(newContent)
-      toast.success("Text added to entry!")
+      sonnerToast.success("Text added to entry!")
     }
   }
 
@@ -303,7 +305,7 @@ export default function NewEntryPage() {
       setDate(parsedDate);
     } else {
       console.error("[validateAndSetDateFromManualInput] Invalid date entered. Reverting manual input.");
-      toast.error("Invalid date. Please use YYYY-MM-DD format and a date after 1900.");
+      sonnerToast.error("Invalid date. Please use YYYY-MM-DD format and a date after 1900.");
       setManualDateInput(format(date, "yyyy-MM-dd")); // Revert to last known good date from main state
     }
   };
@@ -317,7 +319,7 @@ export default function NewEntryPage() {
         setDate(selectedDate);
       } else {
         console.error("[handleDateSelectFromCalendar] Invalid calendar date selected.");
-        toast.error("Cannot select a date before 1900.");
+        sonnerToast.error("Cannot select a date before 1900.");
       }
     }
     setIsDatePopoverOpen(false);
@@ -361,17 +363,17 @@ export default function NewEntryPage() {
           }
 
           // Create signed URL that will work even with private bucket
-          const { data: { signedUrl }, error: signedUrlError } = await supabase.storage
+          const { data: signedUrlData, error: signedUrlError } = await supabase.storage
             .from('entry_images')
             .createSignedUrl(fileName, 60 * 60 * 24 * 365) // 1 year expiry
 
-          if (signedUrlError) throw signedUrlError
+          if (signedUrlError || !signedUrlData) throw signedUrlError || new Error('Failed to create signed URL')
 
-          uploadedUrls.push(signedUrl)
-          toast.success(`Image ${uploadedUrls.length} uploaded successfully!`)
+          uploadedUrls.push(signedUrlData.signedUrl)
+          sonnerToast.success(`Image ${uploadedUrls.length} uploaded successfully!`)
         } catch (error: any) {
           console.error('Error uploading image:', error)
-          toast.error(error.message || "Failed to upload image")
+          sonnerToast.error(error.message || "Failed to upload image")
         }
       }
 
@@ -380,7 +382,7 @@ export default function NewEntryPage() {
       }
     } catch (error) {
       console.error('Error uploading images:', error)
-      toast.error("Failed to upload images")
+      sonnerToast.error("Failed to upload images")
     } finally {
       setUploadingImages(false)
       if (imageInputRef.current) imageInputRef.current.value = ''
@@ -415,10 +417,10 @@ export default function NewEntryPage() {
 
       // Remove from state
       setImages(prev => prev.filter(url => url !== urlToRemove))
-      toast.success("Image removed successfully!")
+      sonnerToast.success("Image removed successfully!")
     } catch (error) {
       console.error('Error removing image:', error)
-      toast.error("Failed to remove image")
+      sonnerToast.error("Failed to remove image")
     }
   }
 
@@ -552,7 +554,7 @@ export default function NewEntryPage() {
                                     onError={(e) => {
                                       const img = e.target as HTMLImageElement
                                       img.src = '/placeholder-image.jpg'
-                                      toast.error(`Failed to load image ${index + 1}`)
+                                      sonnerToast.error(`Failed to load image ${index + 1}`)
                                     }}
                                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 25vw"
                                     loading={index < 2 ? "eager" : "lazy"}
@@ -1071,7 +1073,7 @@ export default function NewEntryPage() {
                                   onError={(e) => {
                                     const img = e.target as HTMLImageElement
                                     img.src = '/placeholder-image.jpg'
-                                    toast.error(`Failed to load image ${index + 1}`)
+                                    sonnerToast.error(`Failed to load image ${index + 1}`)
                                   }}
                                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 25vw"
                                   loading={index < 2 ? "eager" : "lazy"}
