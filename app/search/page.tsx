@@ -671,17 +671,17 @@ export default function SearchPage() {
                               >
                                 <Edit3 className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                               </button>
-                              <button
+          <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDelete(entry);
                                 }}
                                 className="p-1 sm:p-1.5 hover:bg-red-500/10 rounded-lg transition-colors group"
                                 title="Delete Entry"
-                              >
+          >
                                 <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 group-hover:text-red-500" />
-                              </button>
-                            </div>
+          </button>
+        </div>
                           </td>
                         </tr>
                       ))

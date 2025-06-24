@@ -95,58 +95,58 @@ create policy "Public profiles are viewable by everyone"
 
 create policy "Users can insert their own profile"
   on public.profiles for insert
-  with check (auth.uid() = id);
+  with check ((select auth.uid()) = id);
 
 create policy "Users can update their own profile"
   on public.profiles for update
-  using (auth.uid() = id);
+  using ((select auth.uid()) = id);
 
 -- Entries policies
 create policy "Users can view own entries"
   on entries for select
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 create policy "Users can create own entries"
   on entries for insert
-  with check (auth.uid() = user_id);
+  with check ((select auth.uid()) = user_id);
 
 create policy "Users can update own entries"
   on entries for update
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 create policy "Users can delete own entries"
   on entries for delete
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 -- Tags policies
 create policy "Users can view own tags"
   on tags for select
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 create policy "Users can create own tags"
   on tags for insert
-  with check (auth.uid() = user_id);
+  with check ((select auth.uid()) = user_id);
 
 create policy "Users can update own tags"
   on tags for update
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 create policy "Users can delete own tags"
   on tags for delete
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 -- Email Subscriptions policies
 create policy "Users can view their own email subscriptions"
   on email_subscriptions for select
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 create policy "Users can update their own email subscriptions"
   on email_subscriptions for update
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 create policy "Users can insert their own email subscriptions"
   on email_subscriptions for insert
-  with check (auth.uid() = user_id);
+  with check ((select auth.uid()) = user_id);
 
 -- Create indexes if they don't exist
 do $$
@@ -241,7 +241,7 @@ end $$;
 create policy "Users can upload their own images"
   on storage.objects for insert
   with check (
-    auth.uid() = owner and
+    (select auth.uid()) = owner and
     bucket_id = 'entry_images' and
     array_length(regexp_split_to_array(name, '/'), 1) = 2
   );
@@ -249,13 +249,13 @@ create policy "Users can upload their own images"
 create policy "Users can view their own images"
   on storage.objects for select
   using (
-    auth.uid() = owner and
+    (select auth.uid()) = owner and
     bucket_id = 'entry_images'
   );
 
 create policy "Users can delete their own images"
   on storage.objects for delete
   using (
-    auth.uid() = owner and
+    (select auth.uid()) = owner and
     bucket_id = 'entry_images'
   ); 

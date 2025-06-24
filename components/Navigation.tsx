@@ -178,28 +178,28 @@ export default function Navigation() {
                 <div className="border-t border-white/10 pt-3">
                   {navItems.filter(item => !item.public).map((item, index) => (
                     <div key={item.name}>
-                      <Link
-                        href={item.href}
+                  <Link
+                    href={item.href}
                         className="block text-center text-gray-300 hover:text-white transition-colors py-3"
                         onClick={() => setShowMobileMenu(false)}
-                      >
-                        {item.name}
-                      </Link>
+                  >
+                    {item.name}
+                  </Link>
                       {index < navItems.filter(item => !item.public).length - 1 && (
                         <div className="border-t border-white/5 mx-6" />
                       )}
                     </div>
-                  ))}
+                ))}
                   <div className="border-t border-white/5 mx-6" />
-                  <button
+                <button
                     onClick={() => {
                       handleSignOut()
                       setShowMobileMenu(false)
                     }}
                     className="w-full text-center text-gray-300 hover:text-white transition-colors py-3"
-                  >
-                    Sign Out
-                  </button>
+                >
+                  Sign Out
+                </button>
                 </div>
               </>
             )}
