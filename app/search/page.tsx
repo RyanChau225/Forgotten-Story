@@ -572,7 +572,7 @@ export default function SearchPage() {
               <div className="bg-black/40 backdrop-blur-sm rounded-t-xl border-b border-white/10 overflow-x-auto">
                 <table className="w-full table-auto min-w-[600px]">
                   <colgroup>
-                    <col className="w-auto min-w-[100px]" />
+                    <col style={{ width: "100px", maxWidth: "150px" }} />
                     <col className="w-[100px]" />
                     <col className="w-[60px]" />
                     <col className="w-auto min-w-[150px] md:min-w-[200px]" />
@@ -620,7 +620,7 @@ export default function SearchPage() {
               <div className={`flex-1 overflow-auto ${scrollbarStyles}`}>
                 <table className="w-full table-auto min-w-[600px]">
                   <colgroup>
-                    <col className="w-auto min-w-[100px]" />
+                    <col style={{ width: "100px", maxWidth: "150px" }} />
                     <col className="w-[100px]" />
                     <col className="w-[60px]" />
                     <col className="w-auto min-w-[150px] md:min-w-[200px]" />
@@ -636,7 +636,9 @@ export default function SearchPage() {
                           onClick={() => handleEntryClick(entry)}
                         >
                           <td className="px-2 sm:px-4 py-3 sm:py-4">
-                            <span className="font-medium text-sm sm:text-base">{truncateContent(entry.title, 15)}</span>
+                            <div className="max-w-[100px] sm:max-w-[150px] overflow-hidden">
+                              <span className="font-medium text-sm sm:text-base block truncate" title={entry.title}>{entry.title}</span>
+                            </div>
                           </td>
                           <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-400">
                             {format(new Date(entry.date), 'MMM d, yyyy')}
@@ -720,8 +722,8 @@ export default function SearchPage() {
               {selectedEntry ? (
                 <div>
                   <div className="flex items-start justify-between mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold text-white">{selectedEntry.title}</h2>
+                    <div className="flex-1 min-w-0 pr-4">
+                      <h2 className="text-2xl font-bold text-white break-all">{selectedEntry.title}</h2>
                       <p className="text-gray-400 mt-1">
                         {format(new Date(selectedEntry.date), "MMMM d, yyyy")}
                       </p>
