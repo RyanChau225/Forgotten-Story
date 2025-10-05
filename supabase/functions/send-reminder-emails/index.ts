@@ -74,13 +74,7 @@ serve(async (req) => {
       .from("email_subscriptions")
       .select("user_id, frequency, last_sent")
       .eq("is_active", true)
-      .or(`
-        last_sent.is.null,
-        and(frequency.eq.1,last_sent.lt.${cutoffs['1']}),
-        and(frequency.eq.3,last_sent.lt.${cutoffs['3']}),
-        and(frequency.eq.7,last_sent.lt.${cutoffs['7']}),
-        and(frequency.eq.30,last_sent.lt.${cutoffs['30']})
-      `)
+      .or(`last_sent.is.null,and(frequency.eq.1,last_sent.lt.${cutoffs['1']}),and(frequency.eq.3,last_sent.lt.${cutoffs['3']}),and(frequency.eq.7,last_sent.lt.${cutoffs['7']}),and(frequency.eq.30,last_sent.lt.${cutoffs['30']})`)
 
     if (subscriptionError) throw subscriptionError
 
