@@ -60,11 +60,13 @@ serve(async (req) => {
     
     // ✅ OPTIMIZATION 1: Database-level filtering
     // Calculate cutoff times for each frequency
+    // Adding 5-minute buffer to handle timing variance and ensure consistent daily delivery
+    const BUFFER_TIME = 5 * 60 * 1000 // 5 minutes in milliseconds
     const cutoffs = {
-      '1': new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      '3': new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      '7': new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      '30': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      '1': new Date(now.getTime() - (1 * 24 * 60 * 60 * 1000) + BUFFER_TIME).toISOString(),
+      '3': new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000) + BUFFER_TIME).toISOString(),
+      '7': new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000) + BUFFER_TIME).toISOString(),
+      '30': new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000) + BUFFER_TIME).toISOString()
     }
 
     console.log('Fetching eligible subscriptions...')
