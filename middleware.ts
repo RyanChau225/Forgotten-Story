@@ -1,37 +1,11 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
-
-  // Refresh session if expired - required for Server Components
-  await supabase.auth.getSession()
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  // If user is signed in and trying to access /sign-in page
-  if (session && req.nextUrl.pathname === '/sign-in') {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-
-  // If there's no session and the user is trying to access protected routes
-  if (!session && (
-    req.nextUrl.pathname.startsWith('/dashboard') ||
-    req.nextUrl.pathname.startsWith('/api/entries') ||
-    req.nextUrl.pathname.startsWith('/search') ||
-    req.nextUrl.pathname.startsWith('/profile') ||
-    req.nextUrl.pathname.startsWith('/settings')
-  )) {
-    const redirectUrl = new URL('/sign-in', req.url)
-    redirectUrl.searchParams.set('redirectedFrom', req.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  return res
+/**
+ * Thin pass-through middleware. Auth is enforced inside pages/APIs.
+ */
+export function middleware(_req: NextRequest) {
+  return NextResponse.next()
 }
 
 // Update matcher to include auth routes
