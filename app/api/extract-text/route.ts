@@ -10,7 +10,7 @@ const ExtractTextSchema = z.object({
     errorMap: () => ({ message: "Invalid or unsupported mimeType. Supported: image/jpeg, image/png, image/webp, application/pdf" })
   }),
 });
-
+//test
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

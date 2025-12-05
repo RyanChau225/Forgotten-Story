@@ -2937,3 +2937,41 @@ If you’d rather trigger a manual deploy without pushing (e.g., just to test), 
 
 ---
 
+_**User (2025-12-05 11:40Z)**_
+
+apparently im deploying from my 2nd email through git. how do i change my email with the git on my ide
+
+---
+
+_**Agent (model gpt-5.1-codex-high, mode Ask)**_
+
+<think><details><summary>Thought Process</summary>
+**Seeking Git user/email change instructions**</details></think>
+
+---
+
+You only need to update Git’s user configuration. From your project directory:
+
+```powershell
+git config user.name "Your Name"
+git config user.email "new-email@example.com"
+```
+
+That sets the identity for this repo only. If you want to change it globally (for every repo on your machine), add `--global`:
+
+```powershell
+git config --global user.name "Your Name"
+git config --global user.email "new-email@example.com"
+```
+
+To verify what Git sees:
+
+```powershell
+git config user.name
+git config user.email
+```
+
+After updating, your next commits (and thus Vercel deploys) will show the new email.
+
+---
+
