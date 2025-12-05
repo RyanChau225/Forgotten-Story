@@ -644,9 +644,9 @@ export default function Dashboard() {
                                         );
                                       } else if (entry.ai_summary && entry.ai_summary !== "Could not generate summary." && entry.positive_affirmation === "Could not generate affirmations.") {
                                          return <p className="text-sm text-gray-400 ml-2">The AI analyzed this entry but couldn't find enough information to generate affirmations.</p>;
-                                      } else if (entry.positive_affirmation) {
+                                      } else if (typeof entry.positive_affirmation === 'string' && entry.positive_affirmation.length > 0) {
                                          // Fallback for any other string case, including "Could not generate affirmations."
-                                         return <p className="text-sm text-gray-400 ml-2">{entry.positive_affirmation || "No affirmations available."}</p>;
+                                         return <p className="text-sm text-gray-400 ml-2">{entry.positive_affirmation}</p>;
                                       }
                                       return null;
                                     })()}

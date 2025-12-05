@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import CenteredLayout from "@/components/CenteredLayout"
-import { mockApi } from "@/lib/mock-data"
 
 export default function CreateEntry() {
   const router = useRouter()
@@ -19,13 +18,21 @@ export default function CreateEntry() {
     setError("")
 
     try {
-      await mockApi.createEntry({
-        title,
-        content,
-        mood: parseInt(mood),
+      const response = await fetch("/api/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          content,
+          mood: parseInt(mood, 10),
+        }),
       })
-      
-      // Redirect to dashboard after successful creation
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to create entry")
+      }
+
       router.push("/dashboard")
     } catch (error) {
       console.error("Error creating entry:", error)
