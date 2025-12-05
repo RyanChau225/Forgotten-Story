@@ -123,7 +123,7 @@ export async function POST(request: Request) {
     if (error) throw error
 
     return NextResponse.json(data)
-  } catch (error: any) { // Added type for error
+  } catch (error: unknown) {
     console.error('Error creating entry:', error) // More specific log
     if (error instanceof z.ZodError) { // Handle Zod errors specifically if not caught by safeParse (shouldn't happen with safeParse)
       return NextResponse.json(
@@ -190,7 +190,7 @@ export async function PUT(request: Request) {
     }
 
     return NextResponse.json(data)
-  } catch (error: any) { // Added type for error
+  } catch (error: unknown) {
     console.error('Error updating entry:', error) // More specific log
     if (error instanceof z.ZodError) { // Handle Zod errors specifically
       return NextResponse.json(

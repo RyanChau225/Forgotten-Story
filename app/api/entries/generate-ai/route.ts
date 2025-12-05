@@ -8,9 +8,11 @@ const GenerateAiSchema = z.object({
   entryId: z.string().uuid("Invalid entry ID format"), // Assuming UUIDs. Adjust if different.
 });
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const GENERATE_AI_CONTENT_FUNCTION_URL = process.env.GENERATE_AI_CONTENT_FUNCTION_URL!; // URL for the AI function
+// Supabase envs are available if needed for future calls.
+// Optional envs; keep for future use if invoking functions via fetch.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const GENERATE_AI_CONTENT_FUNCTION_URL = process.env.GENERATE_AI_CONTENT_FUNCTION_URL; // URL for the AI function
 
 export async function POST(request: Request) {
   const supabase = createRouteHandlerClient({ cookies });
@@ -21,7 +23,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const payload = await request.json();
+    const payload: unknown = await request.json();
     
     // Validate payload with Zod
     const validationResult = GenerateAiSchema.safeParse(payload);
@@ -102,8 +104,8 @@ export async function POST(request: Request) {
     // 4. Return the AI content
     return NextResponse.json({ summary, affirmations });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in /api/entries/generate-ai:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || 'Internal Server Error' }, { status: 500 });
   }
 }

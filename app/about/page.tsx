@@ -20,7 +20,7 @@ export default function About() {
               <Info className="w-7 h-7 mr-3 text-yellow-500" /> What is Forgotten Story?
             </h2>
             <p className="text-gray-200 leading-relaxed">
-              Forgotten Story is more than just a journaling app; it's your companion in weaving the narrative of your life. We believe every experience, big or small, contributes to the unique tapestry of who you are. Our platform blends the timeless practice of journaling with modern AI-powered insights, creating a dynamic space to record, reflect, and rediscover your journey.
+              Forgotten Story is more than just a journaling app; it&apos;s your companion in weaving the narrative of your life. We believe every experience, big or small, contributes to the unique tapestry of who you are. Our platform blends the timeless practice of journaling with modern AI-powered insights, creating a dynamic space to record, reflect, and rediscover your journey.
             </p>
           </section>
 
@@ -42,7 +42,7 @@ export default function About() {
               <Zap className="w-7 h-7 mr-3 text-yellow-500" /> How It Works
             </h2>
             <p className="text-gray-200 leading-relaxed">
-              Forgotten Story utilizes intelligent AI to help you uncover patterns, themes, and sentiments within your entries. Our app can send you personalized reminders of past moments and reflections, fostering a continuous dialogue with your evolving self. It's designed to be intuitive, secure, and a beautiful space for your thoughts.
+              Forgotten Story utilizes intelligent AI to help you uncover patterns, themes, and sentiments within your entries. Our app can send you personalized reminders of past moments and reflections, fostering a continuous dialogue with your evolving self. It&apos;s designed to be intuitive, secure, and a beautiful space for your thoughts.
         </p>
           </section>
 

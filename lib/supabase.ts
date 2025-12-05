@@ -44,7 +44,7 @@ export async function updateProfile({
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('No user')
 
-    const updates = {
+    const updates: Database['public']['Tables']['profiles']['Insert'] = {
       id: user.id,
       ...(name && { name }),
       ...(theme && { theme }),
@@ -56,7 +56,7 @@ export async function updateProfile({
 
     const { error } = await supabase
       .from('profiles')
-      .upsert(updates)
+      .upsert([updates])
 
     if (error) throw error
     return true
