@@ -1,12 +1,14 @@
 "use client"
 
-import { useEffect } from "react"
+export const dynamic = 'force-dynamic' // <--- Add this line
+
+import { Suspense, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { FcGoogle } from "react-icons/fc"
 import Link from "next/link"
 
-export default function SignIn() {
+function SignInContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClientComponentClient()
@@ -85,4 +87,12 @@ export default function SignIn() {
       </div>
     </div>
   )
-} 
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={null}>
+      <SignInContent />
+    </Suspense>
+  )
+}

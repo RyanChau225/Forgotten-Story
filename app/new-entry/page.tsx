@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+export const dynamic = 'force-dynamic' // <--- Add this line
+
+import { Suspense, useState, useEffect, useRef } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast as sonnerToast } from "sonner"
@@ -36,6 +38,14 @@ const moodLabels = [
 ]
 
 export default function NewEntryPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewEntryPageContent />
+    </Suspense>
+  )
+}
+
+function NewEntryPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClientComponentClient()

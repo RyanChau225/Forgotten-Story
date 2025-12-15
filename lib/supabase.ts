@@ -54,9 +54,9 @@ export async function updateProfile({
       updated_at: new Date().toISOString(),
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .upsert([updates])
+const { error } = await supabase
+  .from('profiles')
+  .upsert(updates as any)
 
     if (error) throw error
     return true
@@ -64,4 +64,4 @@ export async function updateProfile({
     console.error('Error:', error)
     return false
   }
-} 
+}

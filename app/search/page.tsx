@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+export const dynamic = 'force-dynamic'
+
+import { Suspense, useState, useEffect, useCallback } from "react"
 import { format } from "date-fns"
 import { Search, Filter, SortAsc, SortDesc, ArrowUpDown, Trash2, FileText, X, Calendar as CalendarIcon, Sparkles, Loader2, Edit3, CalendarDays, SmilePlus, Hash, Image as ImageIcon } from "lucide-react"
 import { Entry, searchEntries, deleteEntry, getEntryById } from "@/lib/api"
@@ -36,6 +38,14 @@ const scrollbarStyles = `
 `
 
 export default function SearchPage() {
+  return (
+    <Suspense fallback={null}>
+      <SearchPageContent />
+    </Suspense>
+  )
+}
+
+function SearchPageContent() {
   const [query, setQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
   const [entries, setEntries] = useState<Entry[]>([])

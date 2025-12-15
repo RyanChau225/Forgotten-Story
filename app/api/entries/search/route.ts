@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic' // <--- Add this line
+
 // Define Zod schema for search parameters
 const SearchParamsSchema = z.object({
   query: z.string().optional().default(''),
