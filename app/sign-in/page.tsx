@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { FcGoogle } from "react-icons/fc"
 import Link from "next/link"
+import { getSafeRedirectPath } from "@/utils/redirect"
 
 function SignInContent() {
   const router = useRouter()
@@ -17,7 +18,10 @@ function SignInContent() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        const redirectPath = searchParams.get('redirectedFrom') || '/dashboard'
+        const redirectPath = getSafeRedirectPath(
+          searchParams.get('redirectedFrom'),
+          '/dashboard'
+        )
         router.push(redirectPath)
       }
     }
@@ -26,11 +30,18 @@ function SignInContent() {
 
   const handleGoogleSignIn = async () => {
     try {
-      const redirectedFrom = searchParams.get('redirectedFrom') || '/dashboard'
+      const redirectedFrom = getSafeRedirectPath(
+        searchParams.get('redirectedFrom'),
+        '/dashboard'
+      )
+
+      const callbackUrl = new URL('/auth/callback', window.location.origin)
+      callbackUrl.searchParams.set('redirectedFrom', redirectedFrom)
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: callbackUrl.toString(),
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'

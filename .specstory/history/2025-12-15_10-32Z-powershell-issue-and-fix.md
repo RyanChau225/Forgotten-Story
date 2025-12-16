@@ -795,7 +795,13 @@ Additional data:
 
 ```json
 {
-  "codeblockId": "0ea32c32-e379-41e5-9118-eecb32a8b8c6"
+  "codeblockId": "0ea32c32-e379-41e5-9118-eecb32a8b8c6",
+  "reviewData": {
+    "status": "None",
+    "selectedOption": "accept",
+    "isShowingInput": false,
+    "firstTimeReviewMode": false
+  }
 }
 ```
 Result:
@@ -869,7 +875,13 @@ Additional data:
 
 ```json
 {
-  "codeblockId": "8844fbb8-946c-4b75-b5e2-47b744907e8b"
+  "codeblockId": "8844fbb8-946c-4b75-b5e2-47b744907e8b",
+  "reviewData": {
+    "status": "None",
+    "selectedOption": "accept",
+    "isShowingInput": false,
+    "firstTimeReviewMode": false
+  }
 }
 ```
 Result:
@@ -949,7 +961,13 @@ Additional data:
 
 ```json
 {
-  "codeblockId": "9aeda59b-ac90-4037-a1c5-6a5bbe54853c"
+  "codeblockId": "9aeda59b-ac90-4037-a1c5-6a5bbe54853c",
+  "reviewData": {
+    "status": "None",
+    "selectedOption": "accept",
+    "isShowingInput": false,
+    "firstTimeReviewMode": false
+  }
 }
 ```
 Result:
@@ -1243,7 +1261,555 @@ I want to replace the manual date input in new-entry with a native `<input type=
 I’m looking to use `parseISO` on `fetchedEntry.date`, which might include time, and then set the input value to `format(date, 'yyyy-MM-dd')`. The current setup disables future dates on the calendar, but since the search allows future dates, I’ll mimic that behavior for consistency. I plan to remove the popover state, manual date inputs, and validation functions while switching to a native `<input type="date">`. I'll keep the `manualDateInput`, but simplify it. I'll also consider imports for other functionalities, ensuring I'm mindful of the changes needed.
 **Following repository guidelines for date input**
 
-I’m sticking to repository rules, like keeping functions under 50 lines, even though the file is huge. I'll probably add a small helper for parsing date input right within the current file for minimal changes, despite noting the separation of concerns. I see that the new-entry component now wraps in a Suspense component, so I’ll need to check the date logic closely. I plan to switch to `<input type="date">` for both desktop and mobile, providing proper aria labels, while potentially removing unnecessary manual input functions and states.</details></think>
+I’m sticking to repository rules, like keeping functions under 50 lines, even though the file is huge. I'll probably add a small helper for parsing date input right within the current file for minimal changes, despite noting the separation of concerns. I see that the new-entry component now wraps in a Suspense component, so I’ll need to check the date logic closely. I plan to switch to `<input type="date">` for both desktop and mobile, providing proper aria labels, while potentially removing unnecessary manual input functions and states.
+**Refining date handling logic**
+
+I’m planning to keep `manualDateInput` formatted as `yyyy-MM-dd` and use it for the date input value. On change, I’ll set `manualDateInput` while also parsing the input to validate it. I need to store both `Date` and `manualDateInput`. I notice potential timezone issues with local midnight when converting to ISO strings, which can shift the displayed day. To avoid this, I’ll implement a function that returns a local midnight Date. I'll replace the current custom picker with a native `<input type="date">`, ensuring everything remains consistent.
+**Refactoring date input logic**
+
+I’m planning to simplify the date input by using just the native `<input type="date">` for its value and setting the date directly based on the input. I think I can remove the `manualDateInput` state since it’s not necessary anymore, but I’ll double-check its usage in validation. I’ll also refactor to remove unnecessary states and functions, ensuring everything stays under 50 lines. I'll mimic the styling used in search for consistency and make sure the date box can open the picker on click. It's time to patch the file carefully!</details></think>
+
+---
+
+Plan: I’ll compare how `/search` handles dates (native `<input type="date">`) vs `/new-entry` (custom Popover + Calendar), then I’ll refactor `/new-entry` to use the same native date inputs so it behaves identically and reliably. After that, I’ll run a quick build to make sure we didn’t regress.
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "manualDateInput|isDatePopoverOpen|handleManualDateChange|validateAndSetDateFromManualInput|handleDateSelectFromCalendar" in "app/new-entry/page.tsx" • 25 matches</summary>
+
+Output mode: content
+
+
+| File | Content | Line |
+|------|------|------|
+| `app/new-entry/page.tsx` | `const [manualDateInput, setManualDateInput] = useState<string>(format(new Date(), "yyyy-MM-dd"))` | L59 |
+| `app/new-entry/page.tsx` | `const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false)` | L60 |
+| `app/new-entry/page.tsx` | `const handleManualDateChange = (e: React.ChangeEvent<HTMLInputElement>) => \{` | L282 |
+| `app/new-entry/page.tsx` | `const validateAndSetDateFromManualInput = () => \{` | L307 |
+| `app/new-entry/page.tsx` | `console.log("[validateAndSetDateFromManualInput] manualDateInput:", manualDateInput);` | L308 |
+| `app/new-entry/page.tsx` | `const parsedDate = parse(manualDateInput, "yyyy-MM-dd", new Date());` | L309 |
+| `app/new-entry/page.tsx` | `console.log("[validateAndSetDateFromManualInput] parsedDate:", parsedDate);` | L310 |
+| `app/new-entry/page.tsx` | `console.log("[validateAndSetDateFromManualInput] Parsed date is valid. Setting main date state.");` | L314 |
+| `app/new-entry/page.tsx` | `console.error("[validateAndSetDateFromManualInput] Invalid date entered. Reverting manual input.");` | L317 |
+| `app/new-entry/page.tsx` | `const handleDateSelectFromCalendar = (selectedDate: Date \| undefined) => \{` | L323 |
+| `app/new-entry/page.tsx` | `console.log("[handleDateSelectFromCalendar] Selected from calendar:", selectedDate);` | L324 |
+| `app/new-entry/page.tsx` | `console.log("[handleDateSelectFromCalendar] Calendar date is valid. Setting main date state.");` | L328 |
+| `app/new-entry/page.tsx` | `console.error("[handleDateSelectFromCalendar] Invalid calendar date selected.");` | L331 |
+| `app/new-entry/page.tsx` | `value=\{manualDateInput\}` | L646 |
+| `app/new-entry/page.tsx` | `onChange=\{handleManualDateChange\}` | L647 |
+| `app/new-entry/page.tsx` | `onBlur=\{validateAndSetDateFromManualInput\}` | L648 |
+| `app/new-entry/page.tsx` | `<Popover open=\{isDatePopoverOpen\} onOpenChange=\{setIsDatePopoverOpen\}>` | L651 |
+| `app/new-entry/page.tsx` | `onClick=\{() => setIsDatePopoverOpen(!isDatePopoverOpen)\}` | L656 |
+| `app/new-entry/page.tsx` | `onSelect=\{handleDateSelectFromCalendar\}` | L666 |
+| `app/new-entry/page.tsx` | `value=\{manualDateInput\}` | L815 |
+| `app/new-entry/page.tsx` | `onChange=\{handleManualDateChange\}` | L816 |
+| `app/new-entry/page.tsx` | `onBlur=\{validateAndSetDateFromManualInput\}` | L817 |
+| `app/new-entry/page.tsx` | `<Popover open=\{isDatePopoverOpen\} onOpenChange=\{setIsDatePopoverOpen\}>` | L820 |
+| `app/new-entry/page.tsx` | `onClick=\{() => setIsDatePopoverOpen(!isDatePopoverOpen)\}` | L825 |
+| `app/new-entry/page.tsx` | `onSelect=\{handleDateSelectFromCalendar\}` | L835 |
+
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "type=\"date\"" in "app/search/page.tsx" • 4 matches</summary>
+
+Output mode: content
+
+
+| File | Content | Line |
+|------|------|------|
+| `app/search/page.tsx` | `type="date"` | L447 |
+| `app/search/page.tsx` | `type="date"` | L461 |
+| `app/search/page.tsx` | `type="date"` | L975 |
+| `app/search/page.tsx` | `type="date"` | L989 |
+
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "Date Box" in "app/new-entry/page.tsx" • 3 matches</summary>
+
+Output mode: content
+
+
+| File | Content | Line |
+|------|------|------|
+| `app/new-entry/page.tsx` | `\{/* Date Box - New Implementation */\}` | L639 |
+| `app/new-entry/page.tsx` | `\{/* Mobile Layout - Apply similar Date Box changes here */\}` | L806 |
+| `app/new-entry/page.tsx` | `\{/* Date Box - New Implementation for Mobile */\}` | L808 |
+
+
+</details>
+</tool-use>
+
+---
+
+Nice—this confirms what you’re seeing: `/search` uses the browser-native `<input type="date">`, while `/new-entry` uses a custom Popover + `Calendar` component plus some manual parsing. The safest “copy from search” fix is to swap `/new-entry` to use the same native date input and remove the custom calendar plumbing.
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file">
+<details><summary>Tool use: **read_file** • Read file: app/new-entry/page.tsx</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file">
+<details><summary>Tool use: **read_file** • Read file: app/new-entry/page.tsx</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file">
+<details><summary>Tool use: **read_file** • Read file: app/new-entry/page.tsx</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file">
+<details><summary>Tool use: **read_file** • Read file: app/new-entry/page.tsx</summary>
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file">
+<details><summary>Tool use: **read_file** • Read file: app/search/page.tsx</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+**Updating imports for replacement**
+
+I’m looking to update the imports at the top of the file. Currently, I've got items like Calendar, Popover, Input, Button, etc. The `Input` component is used quite a bit, particularly for date inputs on both desktop and mobile. I'll want to search the file for all occurrences of `<Input` to see how it’s being utilized outside of date inputs. It seems like hashtags may also be using raw `<input>` tags, but I’ll confirm this. Grepping for `<Input` usage should help clarify things!</details></think>
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "\<Input\b" in "app/new-entry/page.tsx" • 0 matches</summary>
+
+Output mode: count
+
+
+
+</details>
+</tool-use>
+
+---
+
+
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "CalendarIcon" in "app/new-entry/page.tsx" • 0 matches</summary>
+
+Output mode: count
+
+
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+**Adjusting imports and functions**
+
+I’m reviewing the icon import list, especially `Calendar as CalendarIcon`, which I might remove if it’s unused. However, it could be needed in other contexts, like `CalendarDays`. I’ll also delete the `Popover` import block and related states such as `isDatePopoverOpen`. I’m planning to add a new function to parse a date string into a local Date object. Additionally, I’ll ensure it doesn’t accept dates before 1900 and handle the manual date input states accordingly.
+**Implementing date handling**
+
+I’m thinking about how the date input value can use a specific format. I’ll keep it simple by implementing `const dateInputValue = format(date, "yyyy-MM-dd")`. I need to be cautious since the date state may sometimes be invalid. In the `onChange` handler, I'll parse the input date, and if it's valid and meets the minimum date requirement, I’ll update the state. If not, I might show an error message using `sonnerToast.error`, as that’s what was done earlier for date errors. I’ll also adjust the desktop date box to ensure the UI looks good.
+**Refining the date input**
+
+I'm going to set up a date input field like this: `<input type="date" value={format(date,'yyyy-MM-dd')} onChange={handleDateInputChange} className="w-full ..."/>`. The screenshot suggests a calendar icon might be needed, as browsers typically show this with native date inputs. I plan to retain similar classes to the search component. Additionally, I’ll remove the `Input` and `Popover` components while checking for any remaining `cn` usages. I’ll also prepare to patch the top import lines, including removing unused imports for `Calendar` and `Input`. Let's open the first 30 lines to make these changes.</details></think>
+
+---
+
+<tool-use data-tool-type="read" data-tool-name="read_file">
+<details><summary>Tool use: **read_file** • Read file: app/new-entry/page.tsx</summary>
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+**Evaluating imports and usage**
+
+I need to check if we can remove the parse import since we won’t likely use it anymore. We'll use format, isValid, and parseISO instead. I might also remove the CalendarIcon import from lucide-react, as it could be unused after changes. There are other imports like Calendar, Popover, and Input that could go too. The cn import might still be in use for class names, so I should search for how many times cn is used.</details></think>
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "\bcn\(" in "app/new-entry/page.tsx" • 0 matches</summary>
+
+Output mode: count
+
+
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+**Reviewing code changes**
+
+I'm considering the use of `Button` — it might still have uses in other parts, but I'm unsure if I should keep it. I've removed `parse` and `setIsDatePopoverOpen`, so there's no more state to manage there. Next, I’ll look for any remaining references to `manualDateInput` and check those after applying the patch using grep. It seems like I might have also removed `validateAndSetDateFromManualInput`. Alright, time to apply the patch!</details></think>
+
+---
+
+Cancelled
+
+---
+
+_**User (2025-12-16 10:30Z)**_
+
+hey can you check into this again
+
+---
+
+_**Agent (model gpt-5.2-high, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+**Addressing calendar picker issue**
+
+I’m in agent mode and need to tackle the calendar picker not functioning in /new-entry. I tried a patch, but it looks like I got an error with the empty apply_patch. So, I should make a list of tasks and inspect the reasons behind the calendar picker issue. 
+
+From the screenshot, it seems the date input might be a text field, and the Popover may not be opening due to pointer events. On /search, the date input works, so I think using <input type="date"> in /new-entry will help fix the issue.
+**Simplifying date handling**
+
+I’m thinking about how to manage date storage effectively. One option is to keep the date as a Date object and bind a manual string state for input. On change, I could update both the string and the Date using parseISO or date-fns. 
+
+Another way is to store the date as an ISO string and convert it to a Date when necessary. However, since other parts rely on date state for calendar selection, I’ll need to ensure consistency. I need to check how parseISO interacts with time zones too.
+**Clarifying date storage and handling**
+
+I realize that date-fns's parseISO uses local time, but when I submit using toISOString, it converts to UTC, which could shift the date if there's a negative offset. This means if local time is at midnight, the date might show as the previous day. 
+
+I’m considering storing dates as Date objects, setting them with parse from date-fns to avoid any timezone shifts. I think it’s important to remove the Popover/Calendar and just use `<input type="date">` for consistency. I'll probably need to adjust the state and keep a string representation for display.
+**Streamlining date input handling**
+
+I’m thinking we could use manualDateInput as `dateString` or `entryDateString`, starting with `format(new Date(), 'yyyy-MM-dd')`. The input will be set to type="date," and we’ll update both the manualDateInput and the date whenever they change. 
+
+I plan to remove functions like `validateAndSetDateFromManualInput`, along with imports for CalendarIcon, Button, Calendar, Popover, and Input since they’re not needed for this part anymore. However, I need to double-check if the Button and other components are still in use elsewhere. A quick search through the files should help with that.
+**Addressing calendar picker issues**
+
+Currently, the calendar picker disables future dates, which seems contradictory since code comments suggest allowing them. For journaling, we should allow any date, including future ones, while setting a minimum of "1900-01-01." We'll move to native input and implement min attributes accordingly.
+
+I plan to simplify the date input handling by removing unnecessary functions and aligning styles with the search. This means implementing a new date input and handling changes carefully. I also need to create a todo list for the calendar fixes and ensure everything functions properly.</details></think>
+
+---
+
+Got it — the `/search` “calendar” is actually the browser’s native `<input type="date">`, while `/new-entry` uses a custom Popover + `Calendar` component (which is likely failing due to layering/z-index or popover wiring). Fastest reliable fix: replace the `/new-entry` date UI with the same native date input pattern used in `/search`, and remove the extra popover code.
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [-] Replace `/new-entry` Popover+Calendar date picker with the same native `<input type="date">` pattern used in `/search` (desktop + mobile).
+- [ ] Remove now-unused date picker state/handlers/imports from `app/new-entry/page.tsx` and ensure TypeScript still compiles.
+- [ ] Run `pnpm run build` and check lints for modified file(s).
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "\<Button\b|\bPopover\b|\<Calendar\b|\bCalendarIcon\b|\<Input\b" in "app/new-entry/page.tsx" • 0 matches</summary>
+
+Output mode: count
+
+
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "from "@/components/ui/button"|from "@/components/ui/calendar"|from "@/components/ui/popover"|from "@/components/ui/input"" in "app/new-entry/page.tsx" • 4 matches</summary>
+
+Output mode: content
+
+
+| File | Content | Line |
+|------|------|------|
+| `app/new-entry/page.tsx` | `import \{ Button \} from "@/components/ui/button"` | L15 |
+| `app/new-entry/page.tsx` | `import \{ Calendar \} from "@/components/ui/calendar"` | L16 |
+| `app/new-entry/page.tsx` | `\} from "@/components/ui/popover"` | L21 |
+| `app/new-entry/page.tsx` | `import \{ Input \} from "@/components/ui/input"` | L22 |
+
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "const \[isDatePopoverOpen|handleManualDateChange|validateAndSetDateFromManualInput|handleDateSelectFromCalendar" in "app/new-entry/page.tsx" • 17 matches</summary>
+
+Output mode: content
+
+
+| File | Content | Line |
+|------|------|------|
+| `app/new-entry/page.tsx` | `const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false)` | L60 |
+| `app/new-entry/page.tsx` | `const handleManualDateChange = (e: React.ChangeEvent<HTMLInputElement>) => \{` | L282 |
+| `app/new-entry/page.tsx` | `const validateAndSetDateFromManualInput = () => \{` | L307 |
+| `app/new-entry/page.tsx` | `console.log("[validateAndSetDateFromManualInput] manualDateInput:", manualDateInput);` | L308 |
+| `app/new-entry/page.tsx` | `console.log("[validateAndSetDateFromManualInput] parsedDate:", parsedDate);` | L310 |
+| `app/new-entry/page.tsx` | `console.log("[validateAndSetDateFromManualInput] Parsed date is valid. Setting main date state.");` | L314 |
+| `app/new-entry/page.tsx` | `console.error("[validateAndSetDateFromManualInput] Invalid date entered. Reverting manual input.");` | L317 |
+| `app/new-entry/page.tsx` | `const handleDateSelectFromCalendar = (selectedDate: Date \| undefined) => \{` | L323 |
+| `app/new-entry/page.tsx` | `console.log("[handleDateSelectFromCalendar] Selected from calendar:", selectedDate);` | L324 |
+| `app/new-entry/page.tsx` | `console.log("[handleDateSelectFromCalendar] Calendar date is valid. Setting main date state.");` | L328 |
+| `app/new-entry/page.tsx` | `console.error("[handleDateSelectFromCalendar] Invalid calendar date selected.");` | L331 |
+| `app/new-entry/page.tsx` | `onChange=\{handleManualDateChange\}` | L647 |
+| `app/new-entry/page.tsx` | `onBlur=\{validateAndSetDateFromManualInput\}` | L648 |
+| `app/new-entry/page.tsx` | `onSelect=\{handleDateSelectFromCalendar\}` | L666 |
+| `app/new-entry/page.tsx` | `onChange=\{handleManualDateChange\}` | L816 |
+| `app/new-entry/page.tsx` | `onBlur=\{validateAndSetDateFromManualInput\}` | L817 |
+| `app/new-entry/page.tsx` | `onSelect=\{handleDateSelectFromCalendar\}` | L835 |
+
+
+</details>
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+**Applying patch carefully**
+
+I think I should patch with care, especially using the apply_patch method. It's really important to provide enough context to prevent any mismatches during the process. I must remember not to include line number prefixes since that could complicate things. Overall, I’m just trying to ensure everything goes smoothly while making these adjustments! Let's get to it and make sure I’m clear and organized!</details></think>
+
+---
+
+Good news: `/new-entry` doesn’t actually need the fancy Popover calendar to match `/search`—we can make it **bulletproof** by switching to the same native `<input type="date">` pattern. Next I’ll update `app/new-entry/page.tsx` to remove the popover/calendar code (desktop + mobile) and wire the date input directly into your existing `date` state.
+
+---
+
+<tool-use data-tool-type="unknown" data-tool-name="apply_patch">
+<details>
+<summary>Tool use: **apply_patch**</summary>
+
+
+Parameters:
+
+```json
+{
+  "relativeWorkspacePath": "app/new-entry/page.tsx"
+}
+```
+Additional data:
+
+```json
+{
+  "codeblockId": "62c25571-95b5-493b-9bd4-9d7ca1d3ac95"
+}
+```
+Result:
+
+```json
+{
+  "diff": {
+    "chunks": [
+      {
+        "diffString": "  import { format, parse, isValid, parseISO } from \"date-fns\"\r\n  import { Slider } from \"@/components/ui/slider\"\r\n- import { X, Copy, Camera, Upload, Clipboard, Calendar as CalendarIcon, Image as ImageIcon, Loader2, GripVertical, Type, FileText, Hash, ImageUp, ScanText, SmilePlus, CalendarDays } from \"lucide-react\"\r\n+ import { X, Copy, Camera, Upload, Clipboard, Image as ImageIcon, Loader2, GripVertical, Type, FileText, Hash, ImageUp, ScanText, SmilePlus, CalendarDays } from \"lucide-react\"\r\n  import Image from \"next/image\"\r\n  import { validateImage, compressImage } from \"@/lib/utils\"\r\n  import { DragDropContext, Droppable, Draggable } from \"@hello-pangea/dnd\"\r\n- import { Button } from \"@/components/ui/button\"\r\n- import { Calendar } from \"@/components/ui/calendar\"\r\n- import {\r\n-   Popover,\r\n-   PopoverContent,\r\n-   PopoverTrigger,\r\n- } from \"@/components/ui/popover\"\r\n- import { Input } from \"@/components/ui/input\"\r\n- import { cn } from \"@/lib/utils\"\r\n  import { getEntryById, createEntry, updateEntry } from \"@/lib/api\"\r\n  import { useToast } from \"@/hooks/use-toast\"\r\n+ \r\n+ const MIN_ENTRY_DATE = new Date(1900, 0, 1)\r\n+ const MIN_ENTRY_DATE_INPUT = \"1900-01-01\"\r\n  \r\n  const moodLabels = [\r",
+        "oldStart": 9,
+        "newStart": 9,
+        "oldLines": 19,
+        "newLines": 13,
+        "linesRemoved": 10,
+        "linesAdded": 4
+      },
+      {
+        "diffString": "    const [date, setDate] = useState&lt;Date&gt;(new Date())\r\n    const [manualDateInput, setManualDateInput] = useState&lt;string&gt;(format(new Date(), \"yyyy-MM-dd\"))\r\n-   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false)\r\n    const [hashtags, setHashtags] = useState(\"\")\r\n    const [tagsList, setTagsList] = useState&lt;string[]&gt;([])\r",
+        "oldStart": 58,
+        "newStart": 52,
+        "oldLines": 5,
+        "newLines": 4,
+        "linesRemoved": 1
+      },
+      {
+        "diffString": "      setManualDateInput(format(date, \"yyyy-MM-dd\"));\r\n    }, [date]);\r\n+ \r\n+   const handleDateInputChange = (e: React.ChangeEvent&lt;HTMLInputElement&gt;) =&gt; {\r\n+     const nextValue = e.target.value\r\n+     setManualDateInput(nextValue)\r\n+ \r\n+     if (!nextValue) return\r\n+ \r\n+     const parsedDate = parse(nextValue, \"yyyy-MM-dd\", new Date())\r\n+     if (isValid(parsedDate) &amp;&amp; parsedDate &gt;= MIN_ENTRY_DATE) {\r\n+       setDate(parsedDate)\r\n+     }\r\n+   }\r\n  \r\n    const handleSubmit = async (e: React.FormEvent) =&gt; {\r",
+        "oldStart": 131,
+        "newStart": 124,
+        "oldLines": 4,
+        "newLines": 16,
+        "linesAdded": 12
+      },
+      {
+        "diffString": "      setTagsList(tagsList.filter(tag =&gt; tag !== tagToRemove))\r\n    }\r\n- \r\n-   const handleManualDateChange = (e: React.ChangeEvent&lt;HTMLInputElement&gt;) =&gt; {\r\n-     const rawValue = e.target.value;\r\n-     // Remove all non-digit characters\r\n-     let numericValue = rawValue.replace(/\\D/g, \"\");\r\n- \r\n-     // Limit to 8 digits (YYYYMMDD)\r\n-     if (numericValue.length &gt; 8) {\r\n-       numericValue = numericValue.slice(0, 8);\r\n-     }\r\n- \r\n-     let formattedValue = \"\";\r\n-     if (numericValue.length &gt; 0) {\r\n-       formattedValue = numericValue.slice(0, 4); // Year\r\n-     }\r\n-     if (numericValue.length &gt; 4) {\r\n-       formattedValue += \"-\" + numericValue.slice(4, 6); // Month\r\n-     }\r\n-     if (numericValue.length &gt; 6) {\r\n-       formattedValue += \"-\" + numericValue.slice(6, 8); // Day\r\n-     }\r\n-     \r\n-     // Update the state with the formatted value, up to 10 characters\r\n-     setManualDateInput(formattedValue.slice(0, 10));\r\n-   };\r\n- \r\n-   const validateAndSetDateFromManualInput = () =&gt; {\r\n-     console.log(\"[validateAndSetDateFromManualInput] manualDateInput:\", manualDateInput);\r\n-     const parsedDate = parse(manualDateInput, \"yyyy-MM-dd\", new Date());\r\n-     console.log(\"[validateAndSetDateFromManualInput] parsedDate:\", parsedDate);\r\n- \r\n-     // Allow past, current, and future dates. Only restrict very old dates.\r\n-     if (isValid(parsedDate) &amp;&amp; parsedDate &gt;= new Date(\"1900-01-01\")) {\r\n-       console.log(\"[validateAndSetDateFromManualInput] Parsed date is valid. Setting main date state.\");\r\n-       setDate(parsedDate);\r\n-     } else {\r\n-       console.error(\"[validateAndSetDateFromManualInput] Invalid date entered. Reverting manual input.\");\r\n-       sonnerToast.error(\"Invalid date. Please use YYYY-MM-DD format and a date after 1900.\");\r\n-       setManualDateInput(format(date, \"yyyy-MM-dd\")); // Revert to last known good date from main state\r\n-     }\r\n-   };\r\n- \r\n-   const handleDateSelectFromCalendar = (selectedDate: Date | undefined) =&gt; {\r\n-     console.log(\"[handleDateSelectFromCalendar] Selected from calendar:\", selectedDate);\r\n-     if (selectedDate) {\r\n-       // Allow past, current, and future dates. Only restrict very old dates.\r\n-       if (selectedDate &gt;= new Date(\"1900-01-01\")) {\r\n-         console.log(\"[handleDateSelectFromCalendar] Calendar date is valid. Setting main date state.\");\r\n-         setDate(selectedDate);\r\n-       } else {\r\n-         console.error(\"[handleDateSelectFromCalendar] Invalid calendar date selected.\");\r\n-         sonnerToast.error(\"Cannot select a date before 1900.\");\r\n-       }\r\n-     }\r\n-     setIsDatePopoverOpen(false);\r\n-   };\r\n  \r\n    const handleImageSelect = async (e: React.ChangeEvent&lt;HTMLInputElement&gt;) =&gt; {\r",
+        "oldStart": 279,
+        "newStart": 284,
+        "oldLines": 60,
+        "newLines": 4,
+        "linesRemoved": 56
+      },
+      {
+        "diffString": "              &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n                &lt;h2 className=\"text-lg font-semibold mb-4 flex items-center\"&gt;&lt;CalendarDays className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Date&lt;/h2&gt;\r\n-               &lt;div className=\"flex items-center gap-2\"&gt;\r\n-                 &lt;Input\r\n-                   type=\"text\"\r\n-                   placeholder=\"YYYY-MM-DD\"\r\n+               &lt;div className=\"relative\"&gt;\r\n+                 &lt;input\r\n+                   type=\"date\"\r\n                    value={manualDateInput}\r\n-                   onChange={handleManualDateChange}\r\n-                   onBlur={validateAndSetDateFromManualInput}\r\n-                   className=\"flex-grow bg-black/20 border-white/10 focus:ring-yellow-500/50\"\r\n-                 /&gt;\r\n-                 &lt;Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}&gt;\r\n-                   &lt;PopoverTrigger asChild&gt;\r\n-                     &lt;Button \r\n-                       variant=\"outline\" \r\n-                       className=\"p-2 bg-black/20 border-white/10 hover:bg-black/30\"\r\n-                       onClick={() =&gt; setIsDatePopoverOpen(!isDatePopoverOpen)}\r\n-                       aria-label=\"Open date picker\"\r\n-                     &gt;\r\n-                       &lt;CalendarIcon className=\"h-5 w-5\" /&gt;\r\n-                     &lt;/Button&gt;\r\n-                   &lt;/PopoverTrigger&gt;\r\n-                   &lt;PopoverContent className=\"w-auto p-0\" align=\"end\"&gt;\r\n-                     &lt;Calendar\r\n-                       mode=\"single\"\r\n-                       selected={date}\r\n-                       onSelect={handleDateSelectFromCalendar}\r\n-                       disabled={(d) =&gt; d &gt; new Date() || d &lt; new Date(\"1900-01-01\")}\r\n-                       initialFocus\r\n-                     /&gt;\r\n-                   &lt;/PopoverContent&gt;\r\n-                 &lt;/Popover&gt;\r\n+                   min={MIN_ENTRY_DATE_INPUT}\r\n+                   onChange={handleDateInputChange}\r\n+                   className=\"w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm uppercase cursor-pointer\"\r\n+                 /&gt;\r\n                &lt;/div&gt;\r\n              &lt;/div&gt;\r",
+        "oldStart": 640,
+        "newStart": 589,
+        "oldLines": 34,
+        "newLines": 12,
+        "linesRemoved": 29,
+        "linesAdded": 7
+      },
+      {
+        "diffString": "            &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n              &lt;h2 className=\"text-lg font-semibold mb-4 flex items-center\"&gt;&lt;CalendarDays className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Date&lt;/h2&gt;\r\n-             &lt;div className=\"flex items-center gap-2 mb-3\"&gt;\r\n-               &lt;Input\r\n-                 type=\"text\"\r\n-                 placeholder=\"YYYY-MM-DD\"\r\n+             &lt;div className=\"relative mb-3\"&gt;\r\n+               &lt;input\r\n+                 type=\"date\"\r\n                  value={manualDateInput}\r\n-                 onChange={handleManualDateChange}\r\n-                 onBlur={validateAndSetDateFromManualInput}\r\n-                 className=\"flex-grow bg-black/20 border-white/10 focus:ring-yellow-500/50\"\r\n-               /&gt;\r\n-               &lt;Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}&gt;\r\n-                 &lt;PopoverTrigger asChild&gt;\r\n-                   &lt;Button \r\n-                     variant=\"outline\" \r\n-                     className=\"p-2 bg-black/20 border-white/10 hover:bg-black/30\"\r\n-                     onClick={() =&gt; setIsDatePopoverOpen(!isDatePopoverOpen)}\r\n-                     aria-label=\"Open date picker\"\r\n-                   &gt;\r\n-                     &lt;CalendarIcon className=\"h-5 w-5\" /&gt;\r\n-                   &lt;/Button&gt;\r\n-                 &lt;/PopoverTrigger&gt;\r\n-                 &lt;PopoverContent className=\"w-auto p-0\" align=\"end\"&gt;\r\n-                   &lt;Calendar\r\n-                     mode=\"single\"\r\n-                     selected={date}\r\n-                     onSelect={handleDateSelectFromCalendar}\r\n-                     disabled={(d) =&gt; d &gt; new Date() || d &lt; new Date(\"1900-01-01\")}\r\n-                     initialFocus\r\n-                   /&gt;\r\n-                 &lt;/PopoverContent&gt;\r\n-               &lt;/Popover&gt;\r\n+                 min={MIN_ENTRY_DATE_INPUT}\r\n+                 onChange={handleDateInputChange}\r\n+                 className=\"w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm uppercase cursor-pointer\"\r\n+               /&gt;\r\n              &lt;/div&gt;\r\n            &lt;/div&gt;\r",
+        "oldStart": 809,
+        "newStart": 736,
+        "oldLines": 34,
+        "newLines": 12,
+        "linesRemoved": 29,
+        "linesAdded": 7
+      }
+    ],
+    "editor": "EDITOR_AI"
+  },
+  "shouldAutoFixLints": true,
+  "resultForModel": "Success. Updated the following files:\nM app/new-entry/page.tsx",
+  "contentsAfterEdit": "\"use client\"\r\n\r\nexport const dynamic = 'force-dynamic' // &lt;--- Add this line\r\n\r\nimport { Suspense, useState, useEffect, useRef } from \"react\"\r\nimport { createClientComponentClient } from \"@supabase/auth-helpers-nextjs\"\r\nimport { useRouter, useSearchParams } from \"next/navigation\"\r\nimport { toast as sonnerToast } from \"sonner\"\r\nimport { format, parse, isValid, parseISO } from \"date-fns\"\r\nimport { Slider } from \"@/components/ui/slider\"\r\nimport { X, Copy, Camera, Upload, Clipboard, Image as ImageIcon, Loader2, GripVertical, Type, FileText, Hash, ImageUp, ScanText, SmilePlus, CalendarDays } from \"lucide-react\"\r\nimport Image from \"next/image\"\r\nimport { validateImage, compressImage } from \"@/lib/utils\"\r\nimport { DragDropContext, Droppable, Draggable } from \"@hello-pangea/dnd\"\r\nimport { getEntryById, createEntry, updateEntry } from \"@/lib/api\"\r\nimport { useToast } from \"@/hooks/use-toast\"\r\n\r\nconst MIN_ENTRY_DATE = new Date(1900, 0, 1)\r\nconst MIN_ENTRY_DATE_INPUT = \"1900-01-01\"\r\n\r\nconst moodLabels = [\r\n  { value: 1, label: \"😭\", description: \"Overwhelmed\" },\r\n  { value: 2, label: \"😢\", description: \"Very Sad\" },\r\n  { value: 3, label: \"😔\", description: \"Sad\" },\r\n  { value: 4, label: \"🙁\", description: \"Slightly Down\" },\r\n  { value: 5, label: \"😐\", description: \"Neutral\" },\r\n  { value: 6, label: \"🙂\", description: \"Okay\" },\r\n  { value: 7, label: \"😊\", description: \"Happy\" },\r\n  { value: 8, label: \"😄\", description: \"Very Happy\" },\r\n  { value: 9, label: \"🥳\", description: \"Ecstatic\" },\r\n  { value: 10, label: \"🤩\", description: \"Blissful\" }\r\n]\r\n\r\nexport default function NewEntryPage() {\r\n  return (\r\n    &lt;Suspense fallback={null}&gt;\r\n      &lt;NewEntryPageContent /&gt;\r\n    &lt;/Suspense&gt;\r\n  )\r\n}\r\n\r\nfunction NewEntryPageContent() {\r\n  const router = useRouter()\r\n  const searchParams = useSearchParams()\r\n  const supabase = createClientComponentClient()\r\n  const { toast } = useToast()\r\n  const [user, setUser] = useState&lt;any&gt;(null)\r\n  const [entryId, setEntryId] = useState&lt;string | null&gt;(null)\r\n  const [title, setTitle] = useState(\"\")\r\n  const [content, setContent] = useState(\"Time: \\nLocation: \\n\\n\")\r\n  const [mood, setMood] = useState(5)\r\n  const [date, setDate] = useState&lt;Date&gt;(new Date())\r\n  const [manualDateInput, setManualDateInput] = useState&lt;string&gt;(format(new Date(), \"yyyy-MM-dd\"))\r\n  const [hashtags, setHashtags] = useState(\"\")\r\n  const [tagsList, setTagsList] = useState&lt;string[]&gt;([])\r\n  const [loading, setLoading] = useState(false)\r\n  const [ocrImagePreviewUrl, setOcrImagePreviewUrl] = useState&lt;string | null&gt;(null)\r\n  const [ocrFileForProcessing, setOcrFileForProcessing] = useState&lt;File | null&gt;(null)\r\n  const [extractedText, setExtractedText] = useState(\"\")\r\n  const [isExtractingOcrText, setIsExtractingOcrText] = useState(false)\r\n  const fileInputRef = useRef&lt;HTMLInputElement&gt;(null)\r\n  const contentRef = useRef&lt;HTMLTextAreaElement&gt;(null)\r\n  const [images, setImages] = useState&lt;string[]&gt;([])\r\n  const [uploadingImages, setUploadingImages] = useState(false)\r\n  const imageInputRef = useRef&lt;HTMLInputElement&gt;(null)\r\n  const [isLoadingEntry, setIsLoadingEntry] = useState(false)\r\n\r\n  useEffect(() =&gt; {\r\n    const checkUserAndLoadEntry = async () =&gt; {\r\n      const { data: { session } } = await supabase.auth.getSession()\r\n      if (!session?.user) {\r\n        router.push('/sign-in?redirectedFrom=/new-entry' + (searchParams.get('id') ? &#96;?id=${searchParams.get('id')}&#96;: ''))\r\n        return\r\n      }\r\n      setUser(session.user)\r\n\r\n      const idFromParams = searchParams.get('id')\r\n      if (idFromParams) {\r\n        setEntryId(idFromParams)\r\n        setIsLoadingEntry(true)\r\n        try {\r\n          const fetchedEntry = await getEntryById(idFromParams)\r\n          setTitle(fetchedEntry.title)\r\n          setContent(fetchedEntry.content)\r\n          setMood(fetchedEntry.mood)\r\n          \r\n          const entryDate = parseISO(fetchedEntry.date)\r\n          if (isValid(entryDate)) {\r\n            setDate(entryDate) \r\n            setManualDateInput(format(entryDate, \"yyyy-MM-dd\"))\r\n          } else {\r\n            setDate(new Date()) \r\n            setManualDateInput(format(new Date(), \"yyyy-MM-dd\"))\r\n            toast({\r\n              title: \"Warning\",\r\n              description: \"Loaded entry had an invalid date format. Defaulted to today.\",\r\n              variant: \"default\", \r\n            });\r\n          }\r\n          \r\n          // Load tags into tagsList, not hashtags\r\n          if (fetchedEntry.hashtags &amp;&amp; Array.isArray(fetchedEntry.hashtags)) {\r\n            setTagsList(fetchedEntry.hashtags)\r\n          }\r\n          setImages(fetchedEntry.image_urls || [])\r\n        } catch (error: any) {\r\n          console.error(\"Error fetching entry:\", error)\r\n          toast({\r\n            title: \"Error Loading Entry\",\r\n            description: error.message || \"Could not load the entry for editing. Please try again.\",\r\n            variant: \"destructive\",\r\n          })\r\n          router.push(\"/new-entry\")\r\n        } finally {\r\n          setIsLoadingEntry(false)\r\n        }\r\n      }\r\n    }\r\n    checkUserAndLoadEntry()\r\n  }, [supabase, router, searchParams, toast])\r\n\r\n  useEffect(() =&gt; {\r\n    console.log(\"[useEffect date watcher] Main date state changed to:\", date);\r\n    setManualDateInput(format(date, \"yyyy-MM-dd\"));\r\n  }, [date]);\r\n\r\n  const handleDateInputChange = (e: React.ChangeEvent&lt;HTMLInputElement&gt;) =&gt; {\r\n    const nextValue = e.target.value\r\n    setManualDateInput(nextValue)\r\n\r\n    if (!nextValue) return\r\n\r\n    const parsedDate = parse(nextValue, \"yyyy-MM-dd\", new Date())\r\n    if (isValid(parsedDate) &amp;&amp; parsedDate &gt;= MIN_ENTRY_DATE) {\r\n      setDate(parsedDate)\r\n    }\r\n  }\r\n\r\n  const handleSubmit = async (e: React.FormEvent) =&gt; {\r\n    e.preventDefault()\r\n    if (!user) {\r\n      toast({\r\n        title: \"Error\",\r\n        description: \"You must be logged in to create an entry.\",\r\n        variant: \"destructive\",\r\n      })\r\n      return\r\n    }\r\n    if (!title.trim()) {\r\n      toast({ title: \"Title is required\", variant: \"destructive\" });\r\n      return;\r\n    }\r\n    if (!content.trim()) {\r\n      toast({ title: \"Content is required\", variant: \"destructive\" });\r\n      return;\r\n    }\r\n\r\n    setLoading(true)\r\n\r\n    const entryData = {\r\n      title,\r\n      content,\r\n      mood,\r\n      date: date.toISOString(),\r\n      is_private: true,\r\n      hashtags: tagsList,\r\n      image_urls: images,\r\n    }\r\n\r\n    try {\r\n      let savedEntry;\r\n      if (entryId) {\r\n        savedEntry = await updateEntry({ ...entryData, id: entryId })\r\n        toast({\r\n          title: \"Entry Updated\",\r\n          description: \"Your journal entry has been successfully updated.\",\r\n        })\r\n      } else {\r\n        savedEntry = await createEntry(entryData)\r\n        toast({\r\n          title: \"Entry Saved\",\r\n          description: \"Your journal entry has been successfully saved.\",\r\n        })\r\n      }\r\n      router.push(\"/dashboard\")\r\n    } catch (error) {\r\n      console.error(\"Error saving entry:\", error)\r\n      toast({\r\n        title: \"Error Saving Entry\",\r\n        description: \"There was a problem saving your entry. Please try again.\",\r\n        variant: \"destructive\",\r\n      })\r\n    } finally {\r\n      setLoading(false)\r\n    }\r\n  }\r\n\r\n  const handleMoodChange = (value: number[]) =&gt; {\r\n    setMood(Math.round(value[0]))\r\n  }\r\n\r\n  const handleOcrImageSelection = (selectedFile: File) =&gt; {\r\n    if (selectedFile) {\r\n      setOcrFileForProcessing(selectedFile);\r\n      setExtractedText(\"\"); // Clear previous OCR text\r\n      const reader = new FileReader();\r\n      reader.onloadend = () =&gt; {\r\n        setOcrImagePreviewUrl(reader.result as string);\r\n      };\r\n      reader.readAsDataURL(selectedFile);\r\n    }\r\n  };\r\n\r\n  const triggerOcrProcessing = async () =&gt; {\r\n    if (!ocrFileForProcessing) {\r\n      sonnerToast.error(\"No image selected for text extraction.\");\r\n      return;\r\n    }\r\n\r\n    setIsExtractingOcrText(true);\r\n    try {\r\n      const fileToProcess = ocrFileForProcessing;\r\n      const base64 = await new Promise&lt;string&gt;((resolve, reject) =&gt; {\r\n        const reader = new FileReader();\r\n        reader.onloadend = () =&gt; resolve(reader.result as string);\r\n        reader.onerror = (error) =&gt; reject(error);\r\n        reader.readAsDataURL(fileToProcess);\r\n      });\r\n\r\n      const base64Data = base64.split(',')[1];\r\n      const mimeType = fileToProcess.type;\r\n\r\n      const response = await fetch('/api/extract-text', {\r\n        method: 'POST',\r\n        headers: { 'Content-Type': 'application/json' },\r\n        body: JSON.stringify({ image: base64Data, mimeType }), // Pass mimeType\r\n      });\r\n\r\n      const data = await response.json();\r\n      if (data.error) throw new Error(data.error);\r\n\r\n      setExtractedText(data.text);\r\n      sonnerToast.success(\"Text extracted successfully!\");\r\n    } catch (error: any) {\r\n      console.error('Error extracting OCR text:', error);\r\n      sonnerToast.error(error.message || \"Failed to extract text from image\");\r\n      setExtractedText(\"Error: Could not extract text.\"); // Provide feedback in text area\r\n    } finally {\r\n      setIsExtractingOcrText(false);\r\n    }\r\n  };\r\n\r\n  const handleCopyText = () =&gt; {\r\n    if (extractedText) {\r\n      navigator.clipboard.writeText(extractedText)\r\n      sonnerToast.success(\"Text copied to clipboard!\")\r\n    }\r\n  }\r\n\r\n  const handlePasteToEntry = () =&gt; {\r\n    if (extractedText &amp;&amp; contentRef.current) {\r\n      const currentContent = content\r\n      const newContent = currentContent \r\n        ? currentContent + '\\n' + extractedText \r\n        : extractedText\r\n      setContent(newContent)\r\n      sonnerToast.success(\"Text added to entry!\")\r\n    }\r\n  }\r\n\r\n  const handleTagInput = (e: React.KeyboardEvent&lt;HTMLInputElement&gt;) =&gt; {\r\n    if (e.key === 'Enter' &amp;&amp; hashtags.trim()) {\r\n      e.preventDefault()\r\n      // Remove # if it exists, and don't add it\r\n      const newTag = hashtags.trim().startsWith('#') ? hashtags.trim().slice(1) : hashtags.trim()\r\n      if (!tagsList.includes(newTag)) {\r\n        setTagsList([...tagsList, newTag])\r\n        setHashtags('')\r\n      }\r\n    }\r\n  }\r\n\r\n  const removeTag = (tagToRemove: string) =&gt; {\r\n    setTagsList(tagsList.filter(tag =&gt; tag !== tagToRemove))\r\n  }\r\n\r\n  const handleImageSelect = async (e: React.ChangeEvent&lt;HTMLInputElement&gt;) =&gt; {\r\n    const files = e.target.files\r\n    if (!files || files.length === 0) return\r\n\r\n    setUploadingImages(true)\r\n    const uploadedUrls: string[] = []\r\n\r\n    try {\r\n      const { data: { session } } = await supabase.auth.getSession()\r\n      if (!session) throw new Error(\"Not authenticated\")\r\n\r\n      for (const file of files) {\r\n        try {\r\n          // Validate file\r\n          validateImage(file)\r\n\r\n          // Compress image\r\n          const compressedFile = await compressImage(file)\r\n\r\n          // Create a unique file path: userId/timestamp-filename\r\n          const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg'\r\n          const fileName = &#96;${session.user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}&#96;\r\n\r\n          // Upload file directly without converting to buffer\r\n          const { error: uploadError, data } = await supabase.storage\r\n            .from('entry_images')\r\n            .upload(fileName, compressedFile, {\r\n              contentType: &#96;image/${fileExt}&#96;,\r\n              cacheControl: '3600',\r\n              upsert: true\r\n            })\r\n\r\n          if (uploadError) {\r\n            console.error('Upload error:', uploadError)\r\n            throw uploadError\r\n          }\r\n\r\n          // Create signed URL that will work even with private bucket\r\n          const { data: signedUrlData, error: signedUrlError } = await supabase.storage\r\n            .from('entry_images')\r\n            .createSignedUrl(fileName, 60 * 60 * 24 * 365) // 1 year expiry\r\n\r\n          if (signedUrlError || !signedUrlData) throw signedUrlError || new Error('Failed to create signed URL')\r\n\r\n          uploadedUrls.push(signedUrlData.signedUrl)\r\n          sonnerToast.success(&#96;Image ${uploadedUrls.length} uploaded successfully!&#96;)\r\n        } catch (error: any) {\r\n          console.error('Error uploading image:', error)\r\n          sonnerToast.error(error.message || \"Failed to upload image\")\r\n        }\r\n      }\r\n\r\n      if (uploadedUrls.length &gt; 0) {\r\n        setImages(prev =&gt; [...prev, ...uploadedUrls])\r\n      }\r\n    } catch (error) {\r\n      console.error('Error uploading images:', error)\r\n      sonnerToast.error(\"Failed to upload images\")\r\n    } finally {\r\n      setUploadingImages(false)\r\n      if (imageInputRef.current) imageInputRef.current.value = ''\r\n    }\r\n  }\r\n\r\n  const handleDragEnd = (result: any) =&gt; {\r\n    if (!result.destination) return\r\n\r\n    const items = Array.from(images)\r\n    const [reorderedItem] = items.splice(result.source.index, 1)\r\n    items.splice(result.destination.index, 0, reorderedItem)\r\n\r\n    setImages(items)\r\n  }\r\n\r\n  const removeImage = async (urlToRemove: string) =&gt; {\r\n    try {\r\n      // Extract the file path from the signed URL\r\n      const url = new URL(urlToRemove)\r\n      const pathMatch = url.pathname.match(/\\/entry_images\\/([^?]+)/)\r\n      if (!pathMatch) throw new Error(\"Invalid image URL\")\r\n      \r\n      const path = pathMatch[1]\r\n      \r\n      // Delete from storage\r\n      const { error } = await supabase.storage\r\n        .from('entry_images')\r\n        .remove([path])\r\n\r\n      if (error) throw error\r\n\r\n      // Remove from state\r\n      setImages(prev =&gt; prev.filter(url =&gt; url !== urlToRemove))\r\n      sonnerToast.success(\"Image removed successfully!\")\r\n    } catch (error) {\r\n      console.error('Error removing image:', error)\r\n      sonnerToast.error(\"Failed to remove image\")\r\n    }\r\n  }\r\n\r\n  if (isLoadingEntry) {\r\n    return (\r\n      &lt;div className=\"min-h-screen flex items-center justify-center\"&gt;\r\n        &lt;Loader2 className=\"w-12 h-12 animate-spin text-yellow-500\" /&gt;\r\n        &lt;p className=\"ml-4 text-lg\"&gt;Loading entry for editing...&lt;/p&gt;\r\n      &lt;/div&gt;\r\n    );\r\n  }\r\n\r\n  return (\r\n    &lt;div className=\"min-h-screen pt-24 pb-32 px-4\"&gt;\r\n      &lt;div className=\"container mx-auto max-w-7xl\"&gt;\r\n        {/* Desktop Layout */}\r\n        &lt;div className=\"hidden lg:grid lg:grid-cols-[2fr,1fr] lg:gap-8\"&gt;\r\n          {/* Desktop Left Column */}\r\n          &lt;div className=\"space-y-8\"&gt;\r\n            {/* Title Box */}\r\n            &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n              &lt;h2 className=\"text-lg font-semibold mb-4 flex items-center\"&gt;&lt;Type className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Title&lt;/h2&gt;\r\n              &lt;input\r\n                type=\"text\"\r\n                placeholder=\"Enter a title\"\r\n                value={title}\r\n                onChange={(e) =&gt; setTitle(e.target.value)}\r\n                className=\"w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500/50\"\r\n                required\r\n              /&gt;\r\n            &lt;/div&gt;\r\n\r\n            {/* Content Box */}\r\n            &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n              &lt;h2 className=\"text-lg font-semibold mb-4 flex items-center\"&gt;&lt;FileText className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Content&lt;/h2&gt;\r\n              &lt;textarea\r\n                ref={contentRef}\r\n                placeholder=\"Write your thoughts...\"\r\n                value={content}\r\n                onChange={(e) =&gt; setContent(e.target.value)}\r\n                rows={12}\r\n                className=\"w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 resize-none\"\r\n                required\r\n              /&gt;\r\n            &lt;/div&gt;\r\n\r\n            {/* Journal Images Box */}\r\n            &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n              &lt;div className=\"flex items-center justify-between mb-4\"&gt;\r\n                &lt;h2 className=\"text-lg font-semibold flex items-center\"&gt;&lt;ImageUp className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Journal Images&lt;/h2&gt;\r\n                &lt;div className=\"flex gap-2\"&gt;\r\n                  &lt;input\r\n                    ref={imageInputRef}\r\n                    type=\"file\"\r\n                    accept=\"image/jpeg,image/png,image/webp,image/heic\"\r\n                    multiple\r\n                    onChange={handleImageSelect}\r\n                    className=\"hidden\"\r\n                  /&gt;\r\n                  &lt;button\r\n                    type=\"button\"\r\n                    onClick={() =&gt; {\r\n                      if (imageInputRef.current) {\r\n                        imageInputRef.current.setAttribute('capture', 'environment');\r\n                        imageInputRef.current.click();\r\n                      }\r\n                    }}\r\n                    disabled={uploadingImages}\r\n                    className=\"flex items-center gap-2 px-4 py-2 bg-black/20 hover:bg-black/30 rounded-lg transition-colors disabled:opacity-50\"\r\n                  &gt;\r\n                    &lt;Camera className=\"w-4 h-4\" /&gt;\r\n                    &lt;span&gt;Capture for Journal&lt;/span&gt;\r\n                  &lt;/button&gt;\r\n                  &lt;button\r\n                    type=\"button\"\r\n                    onClick={() =&gt; { \r\n                      if (imageInputRef.current) {\r\n                        imageInputRef.current.removeAttribute('capture');\r\n                        imageInputRef.current.click();\r\n                      }\r\n                    }}\r\n                    disabled={uploadingImages}\r\n                    className=\"flex items-center gap-2 px-4 py-2 bg-black/20 hover:bg-black/30 rounded-lg transition-colors disabled:opacity-50\"\r\n                  &gt;\r\n                    {uploadingImages ? (\r\n                      &lt;&gt;\r\n                        &lt;Loader2 className=\"w-4 h-4 animate-spin\" /&gt;\r\n                        &lt;span&gt;Uploading...&lt;/span&gt;\r\n                      &lt;/&gt;\r\n                    ) : (\r\n                      &lt;&gt;\r\n                        &lt;ImageIcon className=\"w-4 h-4\" /&gt;\r\n                        &lt;span&gt;Upload to Journal&lt;/span&gt;\r\n                      &lt;/&gt;\r\n                    )}\r\n                  &lt;/button&gt;\r\n                &lt;/div&gt;\r\n              &lt;/div&gt;\r\n\r\n              {images.length &gt; 0 &amp;&amp; (\r\n                &lt;DragDropContext onDragEnd={handleDragEnd}&gt;\r\n                  &lt;Droppable droppableId=\"images-desktop\" direction=\"horizontal\"&gt;\r\n                    {(provided) =&gt; (\r\n                      &lt;div\r\n                        ref={provided.innerRef}\r\n                        {...provided.droppableProps}\r\n                        className=\"grid grid-cols-2 sm:grid-cols-3 gap-4\"\r\n                      &gt;\r\n                        {images.map((url, index) =&gt; (\r\n                          &lt;Draggable key={url + \"-desktop\"} draggableId={url + \"-desktop\"} index={index}&gt;\r\n                            {(provided, snapshot) =&gt; (\r\n                              &lt;div\r\n                                ref={provided.innerRef}\r\n                                {...provided.draggableProps}\r\n                                className={&#96;relative group aspect-square ${\r\n                                  snapshot.isDragging ? 'z-50' : ''\r\n                                }&#96;}\r\n                              &gt;\r\n                                &lt;div\r\n                                  {...provided.dragHandleProps}\r\n                                  className=\"absolute top-2 left-2 p-1.5 bg-black/50 hover:bg-black/75 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-grab z-10\"\r\n                                &gt;\r\n                                  &lt;GripVertical className=\"w-4 h-4\" /&gt;\r\n                                &lt;/div&gt;\r\n                                &lt;div className=\"relative w-full h-full\"&gt;\r\n                                  &lt;Image\r\n                                    src={url}\r\n                                    alt={&#96;Entry image ${index + 1}&#96;}\r\n                                    fill\r\n                                    className=\"object-cover rounded-lg\"\r\n                                    onError={(e) =&gt; {\r\n                                      const img = e.target as HTMLImageElement\r\n                                      img.src = '/placeholder-image.jpg'\r\n                                      sonnerToast.error(&#96;Failed to load image ${index + 1}&#96;)\r\n                                    }}\r\n                                    sizes=\"(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 25vw\"\r\n                                    loading={index &lt; 2 ? \"eager\" : \"lazy\"}\r\n                                    quality={75}\r\n                                  /&gt;\r\n                                &lt;/div&gt;\r\n                                &lt;button\r\n                                  onClick={() =&gt; removeImage(url)}\r\n                                  className=\"absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/75 rounded-full opacity-0 group-hover:opacity-100 transition-opacity\"\r\n                                &gt;\r\n                                  &lt;X className=\"w-4 h-4\" /&gt;\r\n                                &lt;/button&gt;\r\n                              &lt;/div&gt;\r\n                            )}\r\n                          &lt;/Draggable&gt;\r\n                        ))}\r\n                        {provided.placeholder}\r\n                      &lt;/div&gt;\r\n                    )}\r\n                  &lt;/Droppable&gt;\r\n                &lt;/DragDropContext&gt;\r\n              )}\r\n            &lt;/div&gt;\r\n            \r\n            {/* Tags Box */}\r\n            &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n              &lt;h2 className=\"text-lg font-semibold mb-4 flex items-center\"&gt;&lt;Hash className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Tags&lt;/h2&gt;\r\n              &lt;div className=\"space-y-4\"&gt;\r\n                &lt;input\r\n                  type=\"text\"\r\n                  placeholder=\"Type a tag and press Enter (e.g., coding)\"\r\n                  value={hashtags}\r\n                  onChange={(e) =&gt; setHashtags(e.target.value)}\r\n                  onKeyDown={handleTagInput}\r\n                  className=\"w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500/50\"\r\n                /&gt;\r\n                {tagsList.length &gt; 0 &amp;&amp; (\r\n                  &lt;div className=\"flex flex-wrap gap-2\"&gt;\r\n                    {tagsList.map((tag, index) =&gt; (\r\n                      &lt;div\r\n                        key={index}\r\n                        className=\"flex items-center gap-1 bg-black/20 px-3 py-1 rounded-full\"\r\n                      &gt;\r\n                        &lt;span className=\"text-sm\"&gt;#{tag}&lt;/span&gt;\r\n                        &lt;button\r\n                          type=\"button\"\r\n                          onClick={() =&gt; removeTag(tag)}\r\n                          className=\"text-gray-400 hover:text-white transition-colors\"\r\n                        &gt;\r\n                          &lt;X className=\"w-4 h-4\" /&gt;\r\n                        &lt;/button&gt;\r\n                      &lt;/div&gt;\r\n                    ))}\r\n                  &lt;/div&gt;\r\n                )}\r\n              &lt;/div&gt;\r\n            &lt;/div&gt;\r\n\r\n            {/* Submit Button for Desktop */}\r\n            &lt;button\r\n              type=\"submit\"\r\n              disabled={loading}\r\n              onClick={handleSubmit}\r\n              className=\"w-full bg-yellow-500 text-black font-medium py-3 rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed\"\r\n            &gt;\r\n              {loading ? \"Saving...\" : \"Save Entry\"}\r\n            &lt;/button&gt;\r\n          &lt;/div&gt;\r\n\r\n          {/* Desktop Right Column - Date and Mood moved here */}\r\n          &lt;div className=\"space-y-8\"&gt;\r\n            {/* Date Box - New Implementation */}\r\n            &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n              &lt;h2 className=\"text-lg font-semibold mb-4 flex items-center\"&gt;&lt;CalendarDays className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Date&lt;/h2&gt;\r\n              &lt;div className=\"relative\"&gt;\r\n                &lt;input\r\n                  type=\"date\"\r\n                  value={manualDateInput}\r\n                  min={MIN_ENTRY_DATE_INPUT}\r\n                  onChange={handleDateInputChange}\r\n                  className=\"w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm uppercase cursor-pointer\"\r\n                /&gt;\r\n              &lt;/div&gt;\r\n            &lt;/div&gt;\r\n\r\n            {/* Mood Box */}\r\n            &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n              &lt;div className=\"flex items-center justify-between mb-4\"&gt;\r\n                &lt;h2 className=\"text-lg font-semibold flex items-center\"&gt;&lt;SmilePlus className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Mood&lt;/h2&gt;\r\n                &lt;div className=\"flex items-center gap-2\"&gt;\r\n                  &lt;span className=\"text-2xl\"&gt;{moodLabels[mood - 1].label}&lt;/span&gt;\r\n                  &lt;span className=\"text-sm text-gray-400\"&gt;{moodLabels[mood - 1].description}&lt;/span&gt;\r\n                &lt;/div&gt;\r\n              &lt;/div&gt;\r\n              &lt;Slider\r\n                value={[mood]}\r\n                min={1}\r\n                max={10}\r\n                step={1}\r\n                onValueChange={handleMoodChange}\r\n                className=\"mb-6\"\r\n              /&gt;\r\n              &lt;div className=\"flex justify-between px-1 mb-2\"&gt;\r\n                {moodLabels.map((label) =&gt; (\r\n                  &lt;div key={label.value} className=\"flex flex-col items-center\"&gt;\r\n                    &lt;span className=\"text-xs text-gray-400\"&gt;{label.value}&lt;/span&gt;\r\n                  &lt;/div&gt;\r\n                ))}\r\n              &lt;/div&gt;\r\n            &lt;/div&gt;\r\n\r\n            {/* Extract Text from Image Box */}\r\n            &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10 space-y-4\"&gt;\r\n              &lt;h2 className=\"text-lg font-semibold flex items-center\"&gt;&lt;ScanText className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Extract Text from Image&lt;/h2&gt;\r\n              &lt;p className=\"text-xs text-gray-400 -mt-2 mb-3\"&gt;Upload an image here for text extraction. It won't be saved with your entry unless added separately via 'Journal Images'.&lt;/p&gt;\r\n              \r\n              {ocrImagePreviewUrl ? (\r\n                &lt;div className=\"space-y-4\"&gt;\r\n                  &lt;div className=\"relative aspect-video rounded-lg overflow-hidden border border-white/20\"&gt;\r\n                    &lt;Image src={ocrImagePreviewUrl} alt=\"OCR Preview\" layout=\"fill\" objectFit=\"contain\" /&gt;\r\n                  &lt;/div&gt;\r\n                  &lt;div className=\"flex gap-2\"&gt;\r\n                    &lt;button\r\n                      type=\"button\"\r\n                      onClick={triggerOcrProcessing}\r\n                      disabled={isExtractingOcrText || !ocrFileForProcessing}\r\n                      className=\"flex-1 flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black px-4 py-2 rounded-lg transition-colors disabled:opacity-50\"\r\n                    &gt;\r\n                      {isExtractingOcrText ? &lt;Loader2 className=\"w-4 h-4 animate-spin\" /&gt; : &lt;Clipboard className=\"w-4 h-4\" /&gt;}\r\n                      {isExtractingOcrText ? \"Extracting...\" : \"Extract Text\"}\r\n                    &lt;/button&gt;\r\n                    &lt;button\r\n                      type=\"button\"\r\n                      onClick={() =&gt; {\r\n                        setOcrImagePreviewUrl(null);\r\n                        setOcrFileForProcessing(null);\r\n                        setExtractedText(\"\");\r\n                        if(fileInputRef.current) fileInputRef.current.value = \"\";\r\n                      }}\r\n                      className=\"flex items-center justify-center gap-2 bg-black/20 hover:bg-black/30 text-white px-4 py-2 rounded-lg transition-colors\"\r\n                    &gt;\r\n                      &lt;X className=\"w-4 h-4\" /&gt; \r\n                      Clear\r\n                    &lt;/button&gt;\r\n                  &lt;/div&gt;\r\n                &lt;/div&gt;\r\n              ) : (\r\n                &lt;div className=\"flex gap-2\"&gt;\r\n                  &lt;input\r\n                    ref={fileInputRef}\r\n                    type=\"file\"\r\n                    accept=\"image/*\"\r\n                    onChange={(e) =&gt; e.target.files &amp;&amp; e.target.files[0] &amp;&amp; handleOcrImageSelection(e.target.files[0])}\r\n                    className=\"hidden\"\r\n                  /&gt;\r\n                   &lt;button\r\n                    type=\"button\"\r\n                    onClick={() =&gt; { if(fileInputRef.current) { fileInputRef.current.removeAttribute('capture'); fileInputRef.current.click(); }}}\r\n                    className=\"flex-1 flex items-center justify-center gap-2 bg-black/20 hover:bg-black/30 text-white px-4 py-2 rounded-lg transition-colors\"\r\n                  &gt;\r\n                    &lt;Upload className=\"w-4 h-4\" /&gt;\r\n                    Browse Files\r\n                  &lt;/button&gt;\r\n                  &lt;button\r\n                    type=\"button\"\r\n                    onClick={() =&gt; { if(fileInputRef.current) { fileInputRef.current.setAttribute('capture', 'environment'); fileInputRef.current.click(); }}}\r\n                    className=\"flex-1 flex items-center justify-center gap-2 bg-black/20 hover:bg-black/30 text-white px-4 py-2 rounded-lg transition-colors\"\r\n                  &gt;\r\n                    &lt;Camera className=\"w-4 h-4\" /&gt;\r\n                    Take Photo\r\n                  &lt;/button&gt;\r\n                &lt;/div&gt;\r\n              )}\r\n\r\n              {(extractedText || isExtractingOcrText) &amp;&amp; (\r\n                &lt;div className=\"bg-black/20 rounded-lg p-4 space-y-4\"&gt;\r\n                  {isExtractingOcrText &amp;&amp; !extractedText ? (\r\n                    &lt;div className=\"text-center text-sm text-gray-400 py-10\"&gt;\r\n                      &lt;Loader2 className=\"w-6 h-6 animate-spin mx-auto mb-2\" /&gt;\r\n                      Extracting text...\r\n                    &lt;/div&gt;\r\n                  ) : (\r\n                    &lt;textarea\r\n                      value={extractedText}\r\n                      readOnly\r\n                      placeholder=\"Extracted text will appear here...\"\r\n                      rows={6}\r\n                      className=\"w-full bg-transparent text-sm text-white/90 whitespace-pre-wrap custom-scrollbar focus:outline-none resize-none\"\r\n                    /&gt;\r\n                  )}\r\n                  {extractedText &amp;&amp; !isExtractingOcrText &amp;&amp; (\r\n                    &lt;div className=\"flex gap-2\"&gt;\r\n                      &lt;button\r\n                        type=\"button\"\r\n                        onClick={handleCopyText}\r\n                        className=\"flex-1 flex items-center justify-center gap-2 bg-black/20 hover:bg-black/30 text-white px-4 py-2 rounded-lg transition-colors\"\r\n                      &gt;\r\n                        &lt;Copy className=\"w-4 h-4\" /&gt;\r\n                        Copy Text\r\n                      &lt;/button&gt;\r\n                      &lt;button\r\n                        type=\"button\"\r\n                        onClick={handlePasteToEntry}\r\n                        className=\"flex-1 flex items-center justify-center gap-2 bg-black/20 hover:bg-black/30 text-white px-4 py-2 rounded-lg transition-colors\"\r\n                      &gt;\r\n                        &lt;Clipboard className=\"w-4 h-4\" /&gt;\r\n                        Add to Entry\r\n                      &lt;/button&gt;\r\n                    &lt;/div&gt;\r\n                  )}\r\n                &lt;/div&gt;\r\n              )}\r\n            &lt;/div&gt;\r\n          &lt;/div&gt;\r\n        &lt;/div&gt;\r\n\r\n        {/* Mobile Layout - Apply similar Date Box changes here */}\r\n        &lt;div className=\"grid grid-cols-1 gap-8 lg:hidden\"&gt;\r\n          {/* Date Box - New Implementation for Mobile */}\r\n          &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n            &lt;h2 className=\"text-lg font-semibold mb-4 flex items-center\"&gt;&lt;CalendarDays className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Date&lt;/h2&gt;\r\n            &lt;div className=\"relative mb-3\"&gt;\r\n              &lt;input\r\n                type=\"date\"\r\n                value={manualDateInput}\r\n                min={MIN_ENTRY_DATE_INPUT}\r\n                onChange={handleDateInputChange}\r\n                className=\"w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm uppercase cursor-pointer\"\r\n              /&gt;\r\n            &lt;/div&gt;\r\n          &lt;/div&gt;\r\n\r\n          {/* Mood Box */}\r\n          &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n            &lt;div className=\"flex items-center justify-between mb-4\"&gt;\r\n              &lt;h2 className=\"text-lg font-semibold flex items-center\"&gt;&lt;SmilePlus className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Mood&lt;/h2&gt;\r\n              &lt;div className=\"flex items-center gap-2\"&gt;\r\n                &lt;span className=\"text-2xl\"&gt;{moodLabels[mood - 1].label}&lt;/span&gt;\r\n                &lt;span className=\"text-sm text-gray-400\"&gt;{moodLabels[mood - 1].description}&lt;/span&gt;\r\n              &lt;/div&gt;\r\n            &lt;/div&gt;\r\n            &lt;Slider\r\n              value={[mood]}\r\n              min={1}\r\n              max={10}\r\n              step={1}\r\n              onValueChange={handleMoodChange}\r\n              className=\"mb-6\"\r\n            /&gt;\r\n            &lt;div className=\"flex justify-between px-1 mb-2\"&gt;\r\n              {moodLabels.map((label) =&gt; (\r\n                &lt;div key={label.value} className=\"flex flex-col items-center\"&gt;\r\n                  &lt;span className=\"text-xs text-gray-400\"&gt;{label.value}&lt;/span&gt;\r\n                &lt;/div&gt;\r\n              ))}\r\n            &lt;/div&gt;\r\n          &lt;/div&gt;\r\n\r\n          {/* Title Box */}\r\n          &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n            &lt;h2 className=\"text-lg font-semibold mb-4 flex items-center\"&gt;&lt;Type className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Title&lt;/h2&gt;\r\n            &lt;input\r\n              type=\"text\"\r\n              placeholder=\"Enter a title\"\r\n              value={title}\r\n              onChange={(e) =&gt; setTitle(e.target.value)}\r\n              className=\"w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500/50\"\r\n              required\r\n            /&gt;\r\n          &lt;/div&gt;\r\n          \r\n          {/* Extract Text from Image Box */}\r\n          &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10 space-y-4\"&gt;\r\n            &lt;h2 className=\"text-lg font-semibold flex items-center\"&gt;&lt;ScanText className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Extract Text from Image&lt;/h2&gt;\r\n            &lt;p className=\"text-xs text-gray-400 -mt-2 mb-3\"&gt;Upload an image here for text extraction. It won't be saved with your entry unless added separately via 'Journal Images'.&lt;/p&gt;\r\n            \r\n            {ocrImagePreviewUrl ? (\r\n              &lt;div className=\"space-y-4\"&gt;\r\n                &lt;div className=\"relative aspect-video rounded-lg overflow-hidden border border-white/20\"&gt;\r\n                  &lt;Image src={ocrImagePreviewUrl} alt=\"OCR Preview\" layout=\"fill\" objectFit=\"contain\" /&gt;\r\n                &lt;/div&gt;\r\n                &lt;div className=\"flex gap-2\"&gt;\r\n                  &lt;button\r\n                    type=\"button\"\r\n                    onClick={triggerOcrProcessing}\r\n                    disabled={isExtractingOcrText || !ocrFileForProcessing}\r\n                    className=\"flex-1 flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black px-4 py-2 rounded-lg transition-colors disabled:opacity-50\"\r\n                  &gt;\r\n                    {isExtractingOcrText ? &lt;Loader2 className=\"w-4 h-4 animate-spin\" /&gt; : &lt;Clipboard className=\"w-4 h-4\" /&gt;}\r\n                    {isExtractingOcrText ? \"Extracting...\" : \"Extract Text\"}\r\n                  &lt;/button&gt;\r\n                  &lt;button\r\n                    type=\"button\"\r\n                    onClick={() =&gt; {\r\n                      setOcrImagePreviewUrl(null);\r\n                      setOcrFileForProcessing(null);\r\n                      setExtractedText(\"\");\r\n                      if(fileInputRef.current) fileInputRef.current.value = \"\";\r\n                    }}\r\n                    className=\"flex items-center justify-center gap-2 bg-black/20 hover:bg-black/30 text-white px-4 py-2 rounded-lg transition-colors\"\r\n                  &gt;\r\n                    &lt;X className=\"w-4 h-4\" /&gt; \r\n                    Clear\r\n                  &lt;/button&gt;\r\n                &lt;/div&gt;\r\n              &lt;/div&gt;\r\n            ) : (\r\n              &lt;div className=\"flex gap-2\"&gt;\r\n                &lt;input\r\n                  ref={fileInputRef}\r\n                  type=\"file\"\r\n                  accept=\"image/*\"\r\n                  onChange={(e) =&gt; e.target.files &amp;&amp; e.target.files[0] &amp;&amp; handleOcrImageSelection(e.target.files[0])}\r\n                  className=\"hidden\"\r\n                /&gt;\r\n                 &lt;button\r\n                  type=\"button\"\r\n                  onClick={() =&gt; { if(fileInputRef.current) { fileInputRef.current.removeAttribute('capture'); fileInputRef.current.click(); }}}\r\n                  className=\"flex-1 flex items-center justify-center gap-2 bg-black/20 hover:bg-black/30 text-white px-4 py-2 rounded-lg transition-colors\"\r\n                &gt;\r\n                  &lt;Upload className=\"w-4 h-4\" /&gt;\r\n                  Browse Files\r\n                &lt;/button&gt;\r\n                &lt;button\r\n                  type=\"button\"\r\n                  onClick={() =&gt; { if(fileInputRef.current) { fileInputRef.current.setAttribute('capture', 'environment'); fileInputRef.current.click(); }}}\r\n                  className=\"flex-1 flex items-center justify-center gap-2 bg-black/20 hover:bg-black/30 text-white px-4 py-2 rounded-lg transition-colors\"\r\n                &gt;\r\n                  &lt;Camera className=\"w-4 h-4\" /&gt;\r\n                  Take Photo\r\n                &lt;/button&gt;\r\n              &lt;/div&gt;\r\n            )}\r\n\r\n            {(extractedText || isExtractingOcrText) &amp;&amp; (\r\n              &lt;div className=\"bg-black/20 rounded-lg p-4 space-y-4\"&gt;\r\n                {isExtractingOcrText &amp;&amp; !extractedText ? (\r\n                  &lt;div className=\"text-center text-sm text-gray-400 py-10\"&gt;\r\n                    &lt;Loader2 className=\"w-6 h-6 animate-spin mx-auto mb-2\" /&gt;\r\n                    Extracting text...\r\n                  &lt;/div&gt;\r\n                ) : (\r\n                  &lt;textarea\r\n                    value={extractedText}\r\n                    readOnly\r\n                    placeholder=\"Extracted text will appear here...\"\r\n                    rows={6}\r\n                    className=\"w-full bg-transparent text-sm text-white/90 whitespace-pre-wrap custom-scrollbar focus:outline-none resize-none\"\r\n                  /&gt;\r\n                )}\r\n                {extractedText &amp;&amp; !isExtractingOcrText &amp;&amp; (\r\n                  &lt;div className=\"flex gap-2\"&gt;\r\n                    &lt;button\r\n                      type=\"button\"\r\n                      onClick={handleCopyText}\r\n                      className=\"flex-1 flex items-center justify-center gap-2 bg-black/20 hover:bg-black/30 text-white px-4 py-2 rounded-lg transition-colors\"\r\n                    &gt;\r\n                      &lt;Copy className=\"w-4 h-4\" /&gt;\r\n                      Copy Text\r\n                    &lt;/button&gt;\r\n                    &lt;button\r\n                      type=\"button\"\r\n                      onClick={handlePasteToEntry}\r\n                      className=\"flex-1 flex items-center justify-center gap-2 bg-black/20 hover:bg-black/30 text-white px-4 py-2 rounded-lg transition-colors\"\r\n                    &gt;\r\n                      &lt;Clipboard className=\"w-4 h-4\" /&gt;\r\n                      Add to Entry\r\n                    &lt;/button&gt;\r\n                  &lt;/div&gt;\r\n                )}\r\n              &lt;/div&gt;\r\n            )}\r\n          &lt;/div&gt;\r\n\r\n          {/* Content Box */}\r\n          &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n            &lt;h2 className=\"text-lg font-semibold mb-4 flex items-center\"&gt;&lt;FileText className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Content&lt;/h2&gt;\r\n            &lt;textarea\r\n              ref={contentRef}\r\n              placeholder=\"Write your thoughts...\"\r\n              value={content}\r\n              onChange={(e) =&gt; setContent(e.target.value)}\r\n              rows={12}\r\n              className=\"w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 resize-none\"\r\n              required\r\n            /&gt;\r\n          &lt;/div&gt;\r\n\r\n          {/* Journal Images Box */}\r\n          &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n            &lt;div className=\"flex items-center justify-between mb-4\"&gt;\r\n              &lt;h2 className=\"text-lg font-semibold flex items-center\"&gt;&lt;ImageUp className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Journal Images&lt;/h2&gt;\r\n              &lt;div className=\"flex gap-2\"&gt;\r\n                &lt;input\r\n                  ref={imageInputRef}\r\n                  type=\"file\"\r\n                  accept=\"image/jpeg,image/png,image/webp,image/heic\"\r\n                  multiple\r\n                  onChange={handleImageSelect}\r\n                  className=\"hidden\"\r\n                /&gt;\r\n                &lt;button\r\n                  type=\"button\"\r\n                  onClick={() =&gt; {\r\n                    if (imageInputRef.current) {\r\n                      imageInputRef.current.setAttribute('capture', 'environment');\r\n                      imageInputRef.current.click();\r\n                    }\r\n                  }}\r\n                  disabled={uploadingImages}\r\n                  className=\"flex items-center gap-2 px-4 py-2 bg-black/20 hover:bg-black/30 rounded-lg transition-colors disabled:opacity-50\"\r\n                &gt;\r\n                  &lt;Camera className=\"w-4 h-4\" /&gt;\r\n                  &lt;span&gt;Capture for Journal&lt;/span&gt;\r\n                &lt;/button&gt;\r\n                &lt;button\r\n                  type=\"button\"\r\n                  onClick={() =&gt; { \r\n                      if (imageInputRef.current) {\r\n                        imageInputRef.current.removeAttribute('capture');\r\n                        imageInputRef.current.click();\r\n                      }\r\n                    }}\r\n                  disabled={uploadingImages}\r\n                  className=\"flex items-center gap-2 px-4 py-2 bg-black/20 hover:bg-black/30 rounded-lg transition-colors disabled:opacity-50\"\r\n                &gt;\r\n                  {uploadingImages ? (\r\n                    &lt;&gt;\r\n                      &lt;Loader2 className=\"w-4 h-4 animate-spin\" /&gt;\r\n                      &lt;span&gt;Uploading...&lt;/span&gt;\r\n                    &lt;/&gt;\r\n                  ) : (\r\n                    &lt;&gt;\r\n                      &lt;ImageIcon className=\"w-4 h-4\" /&gt;\r\n                      &lt;span&gt;Upload to Journal&lt;/span&gt;\r\n                    &lt;/&gt;\r\n                  )}\r\n                &lt;/button&gt;\r\n              &lt;/div&gt;\r\n            &lt;/div&gt;\r\n            {images.length &gt; 0 &amp;&amp; (\r\n              &lt;DragDropContext onDragEnd={handleDragEnd}&gt;\r\n                &lt;Droppable droppableId=\"images-mobile\" direction=\"horizontal\"&gt;\r\n                  {(provided) =&gt; (\r\n                    &lt;div\r\n                      ref={provided.innerRef}\r\n                      {...provided.droppableProps}\r\n                      className=\"grid grid-cols-2 sm:grid-cols-3 gap-4\"\r\n                    &gt;\r\n                      {images.map((url, index) =&gt; (\r\n                        &lt;Draggable key={url + \"-mobile\"} draggableId={url + \"-mobile\"} index={index}&gt;\r\n                          {(provided, snapshot) =&gt; (\r\n                            &lt;div\r\n                              ref={provided.innerRef}\r\n                              {...provided.draggableProps}\r\n                              className={&#96;relative group aspect-square ${\r\n                                snapshot.isDragging ? 'z-50' : ''\r\n                              }&#96;}\r\n                            &gt;\r\n                              &lt;div\r\n                                {...provided.dragHandleProps}\r\n                                className=\"absolute top-2 left-2 p-1.5 bg-black/50 hover:bg-black/75 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-grab z-10\"\r\n                              &gt;\r\n                                &lt;GripVertical className=\"w-4 h-4\" /&gt;\r\n                              &lt;/div&gt;\r\n                              &lt;div className=\"relative w-full h-full\"&gt;\r\n                                &lt;Image\r\n                                  src={url}\r\n                                  alt={&#96;Entry image ${index + 1}&#96;}\r\n                                  fill\r\n                                  className=\"object-cover rounded-lg\"\r\n                                  onError={(e) =&gt; {\r\n                                    const img = e.target as HTMLImageElement\r\n                                    img.src = '/placeholder-image.jpg'\r\n                                    sonnerToast.error(&#96;Failed to load image ${index + 1}&#96;)\r\n                                  }}\r\n                                  sizes=\"(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 25vw\"\r\n                                  loading={index &lt; 2 ? \"eager\" : \"lazy\"}\r\n                                  quality={75}\r\n                                /&gt;\r\n                              &lt;/div&gt;\r\n                              &lt;button\r\n                                onClick={() =&gt; removeImage(url)}\r\n                                className=\"absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/75 rounded-full opacity-0 group-hover:opacity-100 transition-opacity\"\r\n                              &gt;\r\n                                &lt;X className=\"w-4 h-4\" /&gt;\r\n                              &lt;/button&gt;\r\n                            &lt;/div&gt;\r\n                          )}\r\n                        &lt;/Draggable&gt;\r\n                      ))}\r\n                      {provided.placeholder}\r\n                    &lt;/div&gt;\r\n                  )}\r\n                &lt;/Droppable&gt;\r\n              &lt;/DragDropContext&gt;\r\n            )}\r\n          &lt;/div&gt;\r\n\r\n          {/* Tags Box */}\r\n          &lt;div className=\"bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10\"&gt;\r\n            &lt;h2 className=\"text-lg font-semibold mb-4 flex items-center\"&gt;&lt;Hash className=\"w-5 h-5 mr-2 text-gray-400\" /&gt;Tags&lt;/h2&gt;\r\n            &lt;div className=\"space-y-4\"&gt;\r\n              &lt;input\r\n                type=\"text\"\r\n                placeholder=\"Type a tag and press Enter (e.g., coding)\"\r\n                value={hashtags}\r\n                onChange={(e) =&gt; setHashtags(e.target.value)}\r\n                onKeyDown={handleTagInput}\r\n                className=\"w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500/50\"\r\n              /&gt;\r\n              {tagsList.length &gt; 0 &amp;&amp; (\r\n                &lt;div className=\"flex flex-wrap gap-2\"&gt;\r\n                  {tagsList.map((tag, index) =&gt; (\r\n                    &lt;div\r\n                      key={index}\r\n                      className=\"flex items-center gap-1 bg-black/20 px-3 py-1 rounded-full\"\r\n                    &gt;\r\n                      &lt;span className=\"text-sm\"&gt;#{tag}&lt;/span&gt;\r\n                      &lt;button\r\n                        type=\"button\"\r\n                        onClick={() =&gt; removeTag(tag)}\r\n                        className=\"text-gray-400 hover:text-white transition-colors\"\r\n                      &gt;\r\n                        &lt;X className=\"w-4 h-4\" /&gt;\r\n                      &lt;/button&gt;\r\n                    &lt;/div&gt;\r\n                  ))}\r\n                &lt;/div&gt;\r\n              )}\r\n            &lt;/div&gt;\r\n          &lt;/div&gt;\r\n\r\n          {/* Submit Button for Mobile */}\r\n          &lt;button\r\n            type=\"submit\"\r\n            disabled={loading}\r\n            onClick={handleSubmit}\r\n            className=\"w-full bg-yellow-500 text-black font-medium py-3 rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed\"\r\n          &gt;\r\n            {loading ? \"Saving...\" : \"Save Entry\"}\r\n          &lt;/button&gt;\r\n        &lt;/div&gt;\r\n      &lt;/div&gt;\r\n    &lt;/div&gt;\r\n  )\r\n} "
+}
+```
+User decision: **accepted**
+
+Status: **completed**
+
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Replace `/new-entry` Popover+Calendar date picker with the same native `<input type="date">` pattern used in `/search` (desktop + mobile).
+- [-] Remove now-unused date picker state/handlers/imports from `app/new-entry/page.tsx` and ensure TypeScript still compiles.
+- [ ] Run `pnpm run build` and check lints for modified file(s).
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="generic" data-tool-name="read_lints">
+<details>
+          <summary>Tool use: **read_lints** • Read lints for 1 file</summary>
+      
+Lint paths:
+
+- `app/new-entry/page.tsx`
+
+Lint results
+
+
+**No lint errors found**
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "from "@/components/ui/(button|calendar|popover|input)"" in "app/new-entry/page.tsx" • 0 matches</summary>
+
+Output mode: content
+
+
+_No matches found_
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="search" data-tool-name="grep">
+<details>
+<summary>Tool use: **grep** • Grep for "\bPopover\b|\bCalendarIcon\b|\<Calendar\b|\<Input\b|isDatePopoverOpen" in "app/new-entry/page.tsx" • 0 matches</summary>
+
+Output mode: count
+
+
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="task" data-tool-name="todo_write">
+<details><summary>Tool use: **todo_write** • Todo List</summary>
+
+- [x] Replace `/new-entry` Popover+Calendar date picker with the same native `<input type="date">` pattern used in `/search` (desktop + mobile).
+- [x] Remove now-unused date picker state/handlers/imports from `app/new-entry/page.tsx` and ensure TypeScript still compiles.
+- [-] Run `pnpm run build` and check lints for modified file(s).
+
+</details>
+</tool-use>
+
+---
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_cmd">
+<details><summary>Tool use: **run_terminal_cmd** • Run command: pnpm run build</summary>
+
+```bash
+pnpm run build
+```
+
+```
+PS C:\Tech Portfolio\Forgotten-Story&gt; pnpm run build
+
+&gt; my-v0-project@0.1.0 build C:\Tech Portfolio\Forgotten-Story
+&gt; next build
+
+  ▲ Next.js 14.2.26
+  - Environments: .env
+  - Experiments (use with caution):
+    · webpackBuildWorker
+
+   Creating an optimized production build ...
+```
+</details>
+</tool-use>
+
+---
+
+
+
+---
+
+
 
 ---
 

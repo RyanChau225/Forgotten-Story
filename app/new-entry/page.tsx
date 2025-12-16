@@ -8,21 +8,15 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { toast as sonnerToast } from "sonner"
 import { format, parse, isValid, parseISO } from "date-fns"
 import { Slider } from "@/components/ui/slider"
-import { X, Copy, Camera, Upload, Clipboard, Calendar as CalendarIcon, Image as ImageIcon, Loader2, GripVertical, Type, FileText, Hash, ImageUp, ScanText, SmilePlus, CalendarDays } from "lucide-react"
+import { X, Copy, Camera, Upload, Clipboard, Image as ImageIcon, Loader2, GripVertical, Type, FileText, Hash, ImageUp, ScanText, SmilePlus, CalendarDays } from "lucide-react"
 import Image from "next/image"
 import { validateImage, compressImage } from "@/lib/utils"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
 import { getEntryById, createEntry, updateEntry } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+
+const MIN_ENTRY_DATE = new Date(1900, 0, 1)
+const MIN_ENTRY_DATE_INPUT = "1900-01-01"
 
 const moodLabels = [
   { value: 1, label: "😭", description: "Overwhelmed" },
@@ -57,7 +51,6 @@ function NewEntryPageContent() {
   const [mood, setMood] = useState(5)
   const [date, setDate] = useState<Date>(new Date())
   const [manualDateInput, setManualDateInput] = useState<string>(format(new Date(), "yyyy-MM-dd"))
-  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false)
   const [hashtags, setHashtags] = useState("")
   const [tagsList, setTagsList] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -130,6 +123,18 @@ function NewEntryPageContent() {
     console.log("[useEffect date watcher] Main date state changed to:", date);
     setManualDateInput(format(date, "yyyy-MM-dd"));
   }, [date]);
+
+  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextValue = e.target.value
+    setManualDateInput(nextValue)
+
+    if (!nextValue) return
+
+    const parsedDate = parse(nextValue, "yyyy-MM-dd", new Date())
+    if (isValid(parsedDate) && parsedDate >= MIN_ENTRY_DATE) {
+      setDate(parsedDate)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -278,62 +283,6 @@ function NewEntryPageContent() {
   const removeTag = (tagToRemove: string) => {
     setTagsList(tagsList.filter(tag => tag !== tagToRemove))
   }
-
-  const handleManualDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    // Remove all non-digit characters
-    let numericValue = rawValue.replace(/\D/g, "");
-
-    // Limit to 8 digits (YYYYMMDD)
-    if (numericValue.length > 8) {
-      numericValue = numericValue.slice(0, 8);
-    }
-
-    let formattedValue = "";
-    if (numericValue.length > 0) {
-      formattedValue = numericValue.slice(0, 4); // Year
-    }
-    if (numericValue.length > 4) {
-      formattedValue += "-" + numericValue.slice(4, 6); // Month
-    }
-    if (numericValue.length > 6) {
-      formattedValue += "-" + numericValue.slice(6, 8); // Day
-    }
-    
-    // Update the state with the formatted value, up to 10 characters
-    setManualDateInput(formattedValue.slice(0, 10));
-  };
-
-  const validateAndSetDateFromManualInput = () => {
-    console.log("[validateAndSetDateFromManualInput] manualDateInput:", manualDateInput);
-    const parsedDate = parse(manualDateInput, "yyyy-MM-dd", new Date());
-    console.log("[validateAndSetDateFromManualInput] parsedDate:", parsedDate);
-
-    // Allow past, current, and future dates. Only restrict very old dates.
-    if (isValid(parsedDate) && parsedDate >= new Date("1900-01-01")) {
-      console.log("[validateAndSetDateFromManualInput] Parsed date is valid. Setting main date state.");
-      setDate(parsedDate);
-    } else {
-      console.error("[validateAndSetDateFromManualInput] Invalid date entered. Reverting manual input.");
-      sonnerToast.error("Invalid date. Please use YYYY-MM-DD format and a date after 1900.");
-      setManualDateInput(format(date, "yyyy-MM-dd")); // Revert to last known good date from main state
-    }
-  };
-
-  const handleDateSelectFromCalendar = (selectedDate: Date | undefined) => {
-    console.log("[handleDateSelectFromCalendar] Selected from calendar:", selectedDate);
-    if (selectedDate) {
-      // Allow past, current, and future dates. Only restrict very old dates.
-      if (selectedDate >= new Date("1900-01-01")) {
-        console.log("[handleDateSelectFromCalendar] Calendar date is valid. Setting main date state.");
-        setDate(selectedDate);
-      } else {
-        console.error("[handleDateSelectFromCalendar] Invalid calendar date selected.");
-        sonnerToast.error("Cannot select a date before 1900.");
-      }
-    }
-    setIsDatePopoverOpen(false);
-  };
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -639,36 +588,14 @@ function NewEntryPageContent() {
             {/* Date Box - New Implementation */}
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
               <h2 className="text-lg font-semibold mb-4 flex items-center"><CalendarDays className="w-5 h-5 mr-2 text-gray-400" />Date</h2>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="text"
-                  placeholder="YYYY-MM-DD"
+              <div className="relative">
+                <input
+                  type="date"
                   value={manualDateInput}
-                  onChange={handleManualDateChange}
-                  onBlur={validateAndSetDateFromManualInput}
-                  className="flex-grow bg-black/20 border-white/10 focus:ring-yellow-500/50"
+                  min={MIN_ENTRY_DATE_INPUT}
+                  onChange={handleDateInputChange}
+                  className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm uppercase cursor-pointer"
                 />
-                <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className="p-2 bg-black/20 border-white/10 hover:bg-black/30"
-                      onClick={() => setIsDatePopoverOpen(!isDatePopoverOpen)}
-                      aria-label="Open date picker"
-                    >
-                      <CalendarIcon className="h-5 w-5" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="end">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={handleDateSelectFromCalendar}
-                      disabled={(d) => d > new Date() || d < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
               </div>
             </div>
 
@@ -808,36 +735,14 @@ function NewEntryPageContent() {
           {/* Date Box - New Implementation for Mobile */}
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
             <h2 className="text-lg font-semibold mb-4 flex items-center"><CalendarDays className="w-5 h-5 mr-2 text-gray-400" />Date</h2>
-            <div className="flex items-center gap-2 mb-3">
-              <Input
-                type="text"
-                placeholder="YYYY-MM-DD"
+            <div className="relative mb-3">
+              <input
+                type="date"
                 value={manualDateInput}
-                onChange={handleManualDateChange}
-                onBlur={validateAndSetDateFromManualInput}
-                className="flex-grow bg-black/20 border-white/10 focus:ring-yellow-500/50"
+                min={MIN_ENTRY_DATE_INPUT}
+                onChange={handleDateInputChange}
+                className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm uppercase cursor-pointer"
               />
-              <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    className="p-2 bg-black/20 border-white/10 hover:bg-black/30"
-                    onClick={() => setIsDatePopoverOpen(!isDatePopoverOpen)}
-                    aria-label="Open date picker"
-                  >
-                    <CalendarIcon className="h-5 w-5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={handleDateSelectFromCalendar}
-                    disabled={(d) => d > new Date() || d < new Date("1900-01-01")}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
             </div>
           </div>
 
