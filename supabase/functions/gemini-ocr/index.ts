@@ -14,7 +14,18 @@ export const corsHeaders = {
 };
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-const MODEL_NAME = "gemini-2.5-flash-preview-05-20"; // Updated model
+
+/**
+ * OCR model selection.
+ *
+ * Why env var?
+ * - Preview models are frequently renamed/removed.
+ * - Making this configurable lets you switch models without code changes.
+ *
+ * Recommended default (your choice): gemini-2.5-pro
+ */
+const DEFAULT_OCR_MODEL_NAME = "gemini-2.5-pro";
+const MODEL_NAME = Deno.env.get("GEMINI_OCR_MODEL") ?? DEFAULT_OCR_MODEL_NAME;
 
 interface RequestPayload {
   imageData: string; // Expecting base64 encoded image data (without the data:image/...;base64, prefix)

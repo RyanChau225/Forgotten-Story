@@ -6,9 +6,14 @@ const ExtractTextSchema = z.object({
   image: z.string()
     .min(1, "image data is required")
     .max(15 * 1024 * 1024, "Image data too large (max 15MB approx)"), // Approx 15MB for base64 string
-  mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "application/pdf"], {
+  // Note: Gemini supports additional image formats (e.g. HEIC/HEIF on many phones).
+  // Keep this allowlist tight but compatible with common uploads.
+  mimeType: z.enum(
+    ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"],
+    {
     errorMap: () => ({ message: "Invalid or unsupported mimeType. Supported: image/jpeg, image/png, image/webp, application/pdf" })
-  }),
+    }
+  ),
 });
 //test
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

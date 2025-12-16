@@ -26,8 +26,15 @@ interface RequestPayload {
 // Get the API key from environment variables
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
-// Define the model name as a constant
-const MODEL_NAME = "gemini-2.5-flash-preview-05-20"; // Updated model
+/**
+ * AI summary model selection.
+ *
+ * Why env var?
+ * - Preview models are frequently renamed/removed.
+ * - This lets you swap models without redeploying code.
+ */
+const DEFAULT_SUMMARY_MODEL_NAME = "gemini-2.5-pro";
+const MODEL_NAME = Deno.env.get("GEMINI_SUMMARY_MODEL") ?? DEFAULT_SUMMARY_MODEL_NAME;
 
 if (!GEMINI_API_KEY) {
   console.error("GEMINI_API_KEY environment variable not set.");
