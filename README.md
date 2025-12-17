@@ -1,5 +1,7 @@
 # Forgotten Story - Digital Journal Application
 
+https://forgottenstory.ryanchau.ca/
+
 A personal journal application that helps you track your daily experiences, emotions, and memories. Built with Next.js, TypeScript, TailwindCSS, and Supabase.
 
 Forgotten Story is designed to be your personal memory vault. Seamlessly transform your handwritten journal entries into digital format, securely save them to the cloud, and rediscover your past with timely email reminders of your cherished moments.
