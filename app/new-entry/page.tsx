@@ -229,17 +229,10 @@ function NewEntryPageContent() {
 
       const base64Data = base64.split(',')[1];
       const mimeType = fileToProcess.type;
+      const { extractTextFromImage } = await import("@/lib/ocr");
+      const text = await extractTextFromImage({ imageData: base64Data, mimeType });
 
-      const response = await fetch('/api/extract-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Data, mimeType }), // Pass mimeType
-      });
-
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
-
-      setExtractedText(data.text);
+      setExtractedText(text);
       sonnerToast.success("Text extracted successfully!");
     } catch (error: any) {
       console.error('Error extracting OCR text:', error);

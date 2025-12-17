@@ -84,31 +84,16 @@ export default function ImageToText() {
     setProgress(0)
 
     try {
-      // Convert base64 to raw binary
       const base64Data = image.split(',')[1]
-      const imageBuffer = Buffer.from(base64Data, 'base64')
+      const mimeType = image.split(";")[0]?.replace("data:", "") || "image/jpeg"
 
-      // Prepare request to Google Cloud Vision API
-      const response = await fetch('/api/extract-text', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: base64Data
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to extract text')
-      }
-
-      const data = await response.json()
-      setExtractedText(data.text)
+      const { extractTextFromImage } = await import("@/lib/ocr")
+      const text = await extractTextFromImage({ imageData: base64Data, mimeType })
+      setExtractedText(text)
 
       toast({
         title: "Text extracted successfully",
-        description: "Text has been extracted using Google Cloud Vision API.",
+        description: "Text has been extracted using Gemini OCR.",
       })
     } catch (error) {
       console.error("Error extracting text:", error)

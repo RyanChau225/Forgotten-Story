@@ -58,6 +58,8 @@ serve(async (req: Request) => {
       });
     }
 
+    console.log(`gemini-ocr request: mimeType=${mimeType} bytes(base64)=${imageData.length}`);
+
     const safetySettings = [
       { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
       { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
