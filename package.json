@@ -52,8 +52,8 @@
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
-    "next": "14.2.26",
-    "next-auth": "^4.24.11",
+    "next": "14.2.35",
+    "next-auth": "^4.24.13",
     "next-themes": "^0.4.4",
     "prisma": "^6.3.0",
     "react": "^18",
@@ -76,7 +76,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8.57.1",
-    "eslint-config-next": "16.0.6",
+    "eslint-config-next": "14.2.35",
     "postcss": "^8",
     "supabase": "^2.20.12",
     "tailwindcss": "^3.4.17",
@@ -84,7 +84,10 @@
   },
   "pnpm": {
     "overrides": {
-      "@babel/runtime": "7.26.10"
+      "@babel/runtime": "7.26.10",
+      "glob": "10.5.0",
+      "jws": "4.0.1",
+      "tar": "7.5.2"
     }
   }
 }
