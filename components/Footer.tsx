@@ -22,7 +22,7 @@ export default function Footer() {
               About
             </Link>
             <div className="h-3 w-px bg-white/10" />
-            <Link href="mailto:feedback@forgotten-story.com" className="text-gray-400 hover:text-white transition-colors text-xs">
+            <Link href="mailto:chau.r225@gmail.com" className="text-gray-400 hover:text-white transition-colors text-xs">
               Feedback
             </Link>
             <div className="h-3 w-px bg-white/10" />
