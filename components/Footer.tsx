@@ -18,8 +18,8 @@ export default function Footer() {
 
           {/* Right: Links */}
           <div className="flex items-center space-x-6">
-            <Link href="/about" className="text-gray-400 hover:text-white transition-colors text-xs">
-              About
+            <Link href="/#how-it-came-about" className="text-gray-400 hover:text-white transition-colors text-xs">
+              How it came about
             </Link>
             <div className="h-3 w-px bg-white/10" />
             <Link href="mailto:chau.r225@gmail.com" className="text-gray-400 hover:text-white transition-colors text-xs">

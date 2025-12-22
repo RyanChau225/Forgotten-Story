@@ -140,6 +140,20 @@ export default function Home() {
           >
             {user ? "Go to Dashboard" : "Start Your Journey"}
           </Link>
+
+          <section
+            id="how-it-came-about"
+            className="w-full max-w-3xl mx-auto mt-12 text-left"
+          >
+            <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 shadow-xl p-6 md:p-8">
+              <p className="text-sm uppercase tracking-widest text-white/70 mb-3">
+                How it came about
+              </p>
+              <p className="text-gray-200 leading-relaxed md:text-lg">
+                I built Forgotten Story as a passion project after re-reading my own journal entries from days to years ago and realizing I couldn&apos;t fully recall many of those moments. Each entry brought back a real sense of joy, and I wanted to make it easy to revisit those memories over time.
+              </p>
+            </div>
+          </section>
         </div>
 
         {/* Footer REMOVED */}
