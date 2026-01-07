@@ -24,7 +24,7 @@ const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
  *
  * Recommended default (your choice): gemini-2.5-pro
  */
-const DEFAULT_OCR_MODEL_NAME = "gemini-2.5-pro";
+const DEFAULT_OCR_MODEL_NAME = "gemini-3-flash-preview";
 const MODEL_NAME = Deno.env.get("GEMINI_OCR_MODEL") ?? DEFAULT_OCR_MODEL_NAME;
 
 /**

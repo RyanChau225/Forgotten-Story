@@ -33,7 +33,7 @@ const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
  * - Preview models are frequently renamed/removed.
  * - This lets you swap models without redeploying code.
  */
-const DEFAULT_SUMMARY_MODEL_NAME = "gemini-2.5-pro";
+const DEFAULT_SUMMARY_MODEL_NAME = "gemini-3-flash-preview";
 const MODEL_NAME = Deno.env.get("GEMINI_SUMMARY_MODEL") ?? DEFAULT_SUMMARY_MODEL_NAME;
 
 if (!GEMINI_API_KEY) {
